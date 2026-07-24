@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Low-fi browser test surface for the game-rules engine">
+    <title>Game Rules Test Surface</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Browser vertical slice</p>
+          <h1>Game Rules Test Surface</h1>
+          <p class="lede">A deliberately plain host for authoritative WebAssembly state.</p>
+        </div>
+        <div id="engine-status" class="engine-status" data-state="loading" role="status">
+          <span class="status-light" aria-hidden="true"></span>
+          <span>Loading engine…</span>
+        </div>
+      </header>
+
+      <section class="workbench" aria-label="Puzzle test area">
+        <div class="board-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="label">Level</p>
+              <h2>Three-cell walk test</h2>
+            </div>
+            <output id="outcome" class="outcome">—</output>
+          </div>
+
+          <div id="board" class="board" role="grid" aria-label="Game board"></div>
+
+          <div class="legend" aria-label="Board legend">
+            <span><i class="swatch swatch-player"></i>Player</span>
+            <span><i class="swatch swatch-flat"></i>Flat cell</span>
+          </div>
+        </div>
+
+        <aside class="control-panel" aria-label="Game controls">
+          <div>
+            <p class="label">Input</p>
+            <h2>Move one cell</h2>
+          </div>
+
+          <div class="dpad" aria-label="Directional controls">
+            <button type="button" data-direction="north" aria-label="Move north">↑</button>
+            <button type="button" data-direction="west" aria-label="Move west">←</button>
+            <button type="button" data-direction="south" aria-label="Move south">↓</button>
+            <button type="button" data-direction="east" aria-label="Move east">→</button>
+          </div>
+
+          <button id="rewind" class="rewind" type="button">Rewind</button>
+          <p class="hint">Arrow keys / WASD · Backspace / Z to rewind</p>
+
+          <div class="readout">
+            <p class="label">Last result</p>
+            <output id="result">Waiting for input.</output>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
