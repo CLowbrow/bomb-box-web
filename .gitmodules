@@ -1,0 +1,3 @@
+[submodule "bomb-box-state"]
+	path = bomb-box-state
+	url = git@github.com:CLowbrow/bomb-box-state.git
