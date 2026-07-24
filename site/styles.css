@@ -165,6 +165,33 @@ h2 {
   font-size: 0.57rem;
 }
 
+.cell-ramp {
+  overflow: hidden;
+  background: #c9c0ae;
+}
+
+.cell-ramp[data-low-direction="north"],
+.cell-ramp[data-low-direction="south"] {
+  background-image: repeating-linear-gradient(90deg, transparent 0 12px, rgba(36, 36, 36, 0.08) 12px 14px);
+}
+
+.cell-ramp[data-low-direction="east"],
+.cell-ramp[data-low-direction="west"] {
+  background-image: repeating-linear-gradient(0deg, transparent 0 12px, rgba(36, 36, 36, 0.08) 12px 14px);
+}
+
+.ramp-direction {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #4d463b;
+  font-family: system-ui, sans-serif;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
 .cell + .cell {
   border-left: 0;
 }
@@ -185,6 +212,7 @@ h2 {
 
 .legend {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 22px;
   color: #665f52;
@@ -209,6 +237,17 @@ h2 {
 
 .swatch-flat {
   background: #d7d1c4;
+}
+
+.swatch-ramp {
+  display: grid;
+  place-items: center;
+  background: #c9c0ae;
+  font-family: system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .dpad {

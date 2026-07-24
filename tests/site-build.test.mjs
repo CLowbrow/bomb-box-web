@@ -33,6 +33,15 @@ test("site uses repository-path-safe relative asset URLs", async () => {
   assert.doesNotMatch(html, /(?:href|src)="\//);
 });
 
+test("site renders each ramp's downhill orientation", async () => {
+  const html = await readFile(new URL("index.html", outputRoot), "utf8");
+  const app = await readFile(new URL("app.js", outputRoot), "utf8");
+
+  assert.match(html, /Ramp \(downhill\)/);
+  assert.match(app, /cell\.lowDirection/);
+  assert.match(app, /descending \$\{cell\.lowDirection\}/);
+});
+
 test("authored browser level matches the engine contract fixture", async () => {
   const builtLevel = JSON.parse(await readFile(new URL("levels/walkway.json", outputRoot), "utf8"));
   const contractPath = fileURLToPath(

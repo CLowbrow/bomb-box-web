@@ -5,6 +5,12 @@ const resultElement = document.querySelector("#result");
 const rewindButton = document.querySelector("#rewind");
 const directionButtons = [...document.querySelectorAll("[data-direction]")];
 const controls = [...directionButtons, rewindButton];
+const directionArrows = Object.freeze({
+  north: "↑",
+  east: "→",
+  south: "↓",
+  west: "←",
+});
 
 let engine;
 let busy = true;
@@ -53,7 +59,22 @@ function render(state) {
     cellElement.className = `cell cell-${cell.type}`;
     cellElement.dataset.coordinate = coordinate;
     cellElement.setAttribute("role", "gridcell");
-    cellElement.setAttribute("aria-label", `${cell.type} cell at ${coordinate}`);
+
+    if (cell.type === "ramp") {
+      const rampDirectionElement = document.createElement("span");
+      rampDirectionElement.className = "ramp-direction";
+      rampDirectionElement.textContent = directionArrows[cell.lowDirection];
+      rampDirectionElement.setAttribute("aria-hidden", "true");
+      cellElement.dataset.lowDirection = cell.lowDirection;
+      cellElement.setAttribute(
+        "aria-label",
+        `ramp cell at ${coordinate}, descending ${cell.lowDirection}`,
+      );
+      cellElement.title = `Ramp descends ${cell.lowDirection}`;
+      cellElement.append(rampDirectionElement);
+    } else {
+      cellElement.setAttribute("aria-label", `${cell.type} cell at ${coordinate}`);
+    }
 
     const entity = entities.get(coordinate);
     if (entity) {
