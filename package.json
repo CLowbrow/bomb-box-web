@@ -10,7 +10,7 @@
     "serve": "node scripts/serve.mjs",
     "start": "npm run build && npm run serve",
     "test": "npm run build && npm run test:wasm && npm run test:site",
-    "test:wasm": "node bomb-box-state/integrations/wasm/smoke_test.mjs dist/wasm/game_rules.mjs bomb-box-state/tests/contracts/browser_vertical_slice/v1",
+    "test:wasm": "node bomb-box-state/integrations/wasm/smoke_test.mjs dist/wasm/game_rules.mjs bomb-box-state/tests/contracts/browser_vertical_slice/v1/contract.txt bomb-box-state/tests/contracts/engine_hardening/v1/lifecycle.txt bomb-box-state/tests/contracts/engine_hardening/v1/conflicts.txt bomb-box-state/tests/contracts/engine_hardening/v1/rewind-stress.txt",
     "test:site": "node --test tests/site-build.test.mjs"
   },
   "engines": {

@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Low-fi browser test surface for the game-rules engine">
-    <title>Game Rules Test Surface</title>
+    <meta name="description" content="Playable browser host for the game-rules engine hardening level">
+    <title>Engine Hardening Run</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <main class="shell">
       <header class="masthead">
         <div>
-          <p class="eyebrow">Browser vertical slice</p>
-          <h1>Game Rules Test Surface</h1>
-          <p class="lede">A deliberately plain host for authoritative WebAssembly state.</p>
+          <p class="eyebrow">Playable engine test</p>
+          <h1>Hardening Run</h1>
+          <p class="lede">Push, climb, detonate, unlock, and rewind your way to the exit.</p>
         </div>
         <div id="engine-status" class="engine-status" data-state="loading" role="status">
           <span class="status-light" aria-hidden="true"></span>
@@ -21,21 +21,33 @@
         </div>
       </header>
 
-      <section class="workbench" aria-label="Puzzle test area">
+      <section class="workbench" aria-label="Hardening Run puzzle">
         <div class="board-panel">
           <div class="panel-heading">
             <div>
               <p class="label">Level</p>
-              <h2>Three-cell walk test</h2>
+              <h2>Rewind stress scenario</h2>
             </div>
-            <output id="outcome" class="outcome">—</output>
+            <div class="run-status">
+              <span>Turn <strong id="turn-count">0</strong></span>
+              <output id="outcome" class="outcome" data-outcome="ongoing">ongoing</output>
+            </div>
           </div>
+
+          <p class="objective">
+            Reach <strong>EXIT</strong>. Barrels arm when they fall, switches open matching doors,
+            boxes can bridge lower floors, and ramps change your height one half-step at a time.
+          </p>
 
           <div id="board" class="board" role="grid" aria-label="Game board"></div>
 
           <div class="legend" aria-label="Board legend">
-            <span><i class="swatch swatch-player"></i>Player</span>
-            <span><i class="swatch swatch-flat"></i>Flat cell</span>
+            <span><i class="swatch swatch-player">P</i>Player</span>
+            <span><i class="swatch swatch-box">■</i>Box</span>
+            <span><i class="swatch swatch-barrel">●</i>Barrel</span>
+            <span><i class="swatch swatch-switch">SW</i>Switch</span>
+            <span><i class="swatch swatch-door">D</i>Door</span>
+            <span><i class="swatch swatch-exit">◇</i>Exit</span>
             <span><i class="swatch swatch-ramp">↓</i>Ramp (downhill)</span>
           </div>
         </div>
@@ -53,13 +65,24 @@
             <button type="button" data-direction="east" aria-label="Move east">→</button>
           </div>
 
-          <button id="rewind" class="rewind" type="button">Rewind</button>
+          <div class="history-controls">
+            <button id="rewind" class="secondary-control" type="button">Rewind</button>
+            <button id="restart" class="secondary-control" type="button">Restart</button>
+          </div>
           <p class="hint">Arrow keys / WASD · Backspace / Z to rewind</p>
 
-          <div class="readout">
-            <p class="label">Last result</p>
-            <output id="result">Waiting for input.</output>
+          <div class="readout" aria-live="polite">
+            <p class="label">Last turn</p>
+            <output id="result">Waiting for engine.</output>
+            <ol id="event-list" class="event-list"></ol>
           </div>
+
+          <details class="solution">
+            <summary>Show test route</summary>
+            <p aria-label="east, north, east, east, east, east, north, east, east, east, north, north, east">
+              → ↑ → → → → ↑ → → → ↑ ↑ →
+            </p>
+          </details>
         </aside>
       </section>
     </main>

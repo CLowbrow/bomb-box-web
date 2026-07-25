@@ -1,8 +1,8 @@
-# Bomb Box web test surface
+# Bomb Box playable web test surface
 
-This repository builds a deliberately low-fi browser host for the puzzle game's
-C++ rules engine. The finished output is a dependency-free static site, including
-the generated WebAssembly module, under `dist/`.
+This repository builds a deliberately low-fi, playable browser host for the
+puzzle game's C++ rules engine. The finished output is a dependency-free static
+site, including the generated WebAssembly module, under `dist/`.
 
 The game title is temporary. Technical names intentionally follow the
 title-independent `game_rules` naming used by the engine submodule.
@@ -41,7 +41,7 @@ Or build and serve in one command:
 npm start
 ```
 
-Run the engine's browser contract and verify the static output:
+Run the engine's complete WebAssembly contract corpus and verify the static output:
 
 ```sh
 npm test
@@ -65,12 +65,18 @@ repository. Public submodules need no additional secret.
 All browser asset paths are relative, so the output works both at a custom
 domain and under a repository path such as `https://example.github.io/repo/`.
 
-## Current game scope
+## Playable level
 
-The page loads the real WebAssembly engine and the version-1 browser contract
-level. Arrow keys, WASD, and the on-screen controls submit authoritative moves;
+The page loads the real WebAssembly engine and expands the engine-hardening
+rewind stress level into a thirteen-turn puzzle. Its route exercises pushing,
+falling, barrel arming and chained explosions, a color switch and door, walking
+on a box above a lowered floor, a second box push, two-step ramp traversal, a
+terminal exit, exact rewind, and branching after rewind. The board renders
+stacked entities, elevation, ramps and their downhill direction, and all current
+fixture types.
+
+Arrow keys, WASD, and the on-screen controls submit authoritative moves;
 Backspace, Z, and the Rewind button use the engine's resolved-state history.
-
-The current engine slice supports flat walking and rewind. Boxes, gravity,
-fixtures, ramps, and explosions are represented by the broader schema but are
-not yet playable rules.
+Restart reloads the authored level and clears history. The last-turn feed shows
+the semantic events and derived ticks returned by the engine rather than
+reconstructing rules state in the browser.
