@@ -63,6 +63,11 @@ const COLOR_OPTIONS: FixtureColor[] = ["red", "green", "blue", "yellow"];
 const DIRECTION_OPTIONS: Direction[] = ["north", "east", "south", "west"];
 const ENTITY_GLYPHS: Record<EntityType, string> = { player: "P", box: "■", barrel: "●" };
 
+export function elevationColorLevel(geometry: CellGeometry): number {
+  const elevation = geometry.type === "flat" ? geometry.elevation : geometry.lowElevation;
+  return Math.min(5, Math.max(0, Math.floor(elevation)));
+}
+
 type Overlay = "new" | "resize" | "coordinates" | "import" | null;
 
 function App() {
@@ -306,12 +311,22 @@ function App() {
 
       <section class="editor-workspace">
         <aside class="tool-panel" aria-label="Placement tools">
+          {TOOL_OPTIONS.filter((option) => option.kind === "select").map((option) => (
+            <button
+              key={option.kind}
+              type="button"
+              class={`tool-button select-tool-button ${state.tool.kind === option.kind ? "is-active" : ""}`}
+              aria-pressed={state.tool.kind === option.kind}
+              onClick={() => dispatch({ type: "setTool", tool: option.kind })}
+            >
+              <span aria-hidden="true">{option.glyph}</span>{option.label}
+            </button>
+          ))}
           <div class="panel-title">
             <p class="eyebrow">Palette</p>
-            <h2>Place one cell</h2>
           </div>
           <div class="tool-grid">
-            {TOOL_OPTIONS.map((option) => (
+            {TOOL_OPTIONS.filter((option) => option.kind !== "select").map((option) => (
               <button
                 key={option.kind}
                 type="button"
@@ -361,6 +376,7 @@ function App() {
                 const fixture = state.document.fixtures[key];
                 const entities = entitiesAt(state.document, coordinate);
                 const selected = key === selectedKey;
+                const colorLevel = elevationColorLevel(geometry);
                 return (
                   <button
                     key={key}
@@ -368,7 +384,7 @@ function App() {
                     role="gridcell"
                     data-coordinate={key}
                     tabIndex={selected ? 0 : -1}
-                    class={`editor-cell cell-${geometry.type} ${selected ? "is-selected" : ""} ${issueKeys.has(key) ? "has-issue" : ""}`}
+                    class={`editor-cell cell-${geometry.type} elevation-color-${colorLevel} ${colorLevel >= 3 ? "has-dark-elevation" : ""} ${selected ? "is-selected" : ""} ${issueKeys.has(key) ? "has-issue" : ""}`}
                     aria-label={cellDescription(coordinate, geometry, fixture, entities)}
                     onClick={() => dispatch({
                       type: state.tool.kind === "select" ? "select" : "applyTool",

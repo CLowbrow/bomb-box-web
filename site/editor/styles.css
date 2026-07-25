@@ -74,6 +74,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .tool-button { display: grid; min-height: 57px; grid-template-columns: 24px 1fr; align-items: center; gap: 5px; padding: 7px; border: 1px solid var(--line); background: var(--paper-deep); text-align: left; font-size: .66rem; font-weight: 800; cursor: pointer; }
+.select-tool-button { width: 100%; margin-bottom: 18px; }
+.select-tool-button + .panel-title { margin-bottom: 18px; }
 .tool-button > span { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid #777166; background: var(--paper); font-family: system-ui, sans-serif; }
 .tool-button.is-active { border-color: var(--ink); color: white; background: #37342e; box-shadow: 3px 3px 0 #c2baab; }
 .tool-button.is-active > span { color: var(--ink); }
@@ -102,14 +104,21 @@ kbd { display: inline-block; min-width: 58px; padding: 2px 4px; border: 1px soli
   linear-gradient(rgba(38,36,31,.055) 1px, transparent 1px),
   linear-gradient(90deg, rgba(38,36,31,.055) 1px, transparent 1px), #d5d0c5; background-size: 18px 18px; }
 .editor-board { display: grid; width: max-content; min-width: 100%; grid-template-columns: repeat(var(--columns), var(--cell-size)); justify-content: center; gap: 3px; }
-.editor-cell { position: relative; width: var(--cell-size); height: var(--cell-size); overflow: hidden; padding: 0; border: 1px solid #5e5a52; background: #d9d2c4; box-shadow: inset 0 -5px 0 rgba(38,36,31,.08); cursor: crosshair; touch-action: manipulation; }
+.editor-cell { --cell-color: #d9d2c4; --cell-label-color: #302d28; position: relative; width: var(--cell-size); height: var(--cell-size); overflow: hidden; padding: 0; border: 1px solid #5e5a52; background-color: var(--cell-color); box-shadow: inset 0 -5px 0 rgba(38,36,31,.12); cursor: crosshair; touch-action: manipulation; }
+.editor-cell.elevation-color-0 { --cell-color: #d9d2c4; }
+.editor-cell.elevation-color-1 { --cell-color: #c0b8aa; }
+.editor-cell.elevation-color-2 { --cell-color: #9f9789; }
+.editor-cell.elevation-color-3 { --cell-color: #716b62; }
+.editor-cell.elevation-color-4 { --cell-color: #514d47; }
+.editor-cell.elevation-color-5 { --cell-color: #312f2c; }
+.editor-cell.has-dark-elevation { --cell-label-color: #f7f2e8; }
 .editor-cell:hover { filter: brightness(1.04); }
 .editor-cell.is-selected { z-index: 3; outline: 3px solid #16798a; outline-offset: 0; }
 .editor-cell.has-issue { border-color: #bd3f34; }
-.editor-cell.cell-ramp { background: repeating-linear-gradient(135deg, #c8bfaf 0 8px, #d8d0c3 8px 16px); }
-.cell-coordinate, .cell-height { position: absolute; z-index: 5; color: #605b52; font-size: clamp(.4rem, calc(var(--cell-size) / 10), .56rem); line-height: 1; }
+.editor-cell.cell-ramp { background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.1) 0 8px, rgba(255,255,255,.08) 8px 16px); }
+.cell-coordinate, .cell-height { position: absolute; z-index: 5; color: var(--cell-label-color); font-size: clamp(.4rem, calc(var(--cell-size) / 10), .56rem); line-height: 1; }
 .cell-coordinate { right: 3px; bottom: 3px; }.cell-height { top: 3px; left: 3px; }
-.cell-ramp-arrow { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(54,50,44,.38); font-family: system-ui, sans-serif; font-size: calc(var(--cell-size) * .46); font-weight: 900; }
+.cell-ramp-arrow { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cell-label-color); font-family: system-ui, sans-serif; font-size: calc(var(--cell-size) * .46); font-weight: 900; opacity: .42; }
 .cell-fixture { position: absolute; z-index: 1; inset: 18%; display: grid; place-items: center; border: 2px solid #7e372f; color: #7e372f; background: rgba(250,247,239,.72); font-size: calc(var(--cell-size) * .12); font-weight: 900; }
 .fixture-switch { inset: auto 15% 13%; height: 18%; border-width: 1px; }.fixture-door { inset: 10% 13%; color: white; background: repeating-linear-gradient(90deg, #b8493e 0 5px, #8e352e 5px 8px); }.fixture-exit { inset: 14%; border-color: #297156; border-radius: 50%; color: #23634c; background: rgba(119,198,162,.35); }
 .fixture-green { border-color: #34734a; }.fixture-blue { border-color: #3b679d; }.fixture-yellow { border-color: #a58021; }

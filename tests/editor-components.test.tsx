@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ColorPicker, CommitNumberInput } from "../site/editor/main";
+import { ColorPicker, CommitNumberInput, elevationColorLevel } from "../site/editor/main";
 
 describe("editor form components", () => {
   it("commits an exact integer when the number field loses focus", () => {
@@ -20,5 +20,13 @@ describe("editor form components", () => {
     expect(screen.getByRole("button", { name: "red" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "blue" }));
     expect(onChange).toHaveBeenCalledWith("blue");
+  });
+
+  it("maps cell elevations onto a color scale capped at level five", () => {
+    expect(elevationColorLevel({ type: "flat", elevation: -2 })).toBe(0);
+    expect(elevationColorLevel({ type: "flat", elevation: 2 })).toBe(2);
+    expect(elevationColorLevel({ type: "ramp", lowDirection: "north", lowElevation: 3 })).toBe(3);
+    expect(elevationColorLevel({ type: "flat", elevation: 5 })).toBe(5);
+    expect(elevationColorLevel({ type: "flat", elevation: 12 })).toBe(5);
   });
 });
