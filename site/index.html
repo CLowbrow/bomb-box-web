@@ -12,8 +12,8 @@
       <header class="masthead">
         <div>
           <p class="eyebrow">Playable engine test</p>
-          <h1>Hardening Run</h1>
-          <p class="lede">Push, climb, detonate, unlock, and rewind your way to the exit.</p>
+          <h1 id="level-title">Hardening Run</h1>
+          <p id="level-lede" class="lede">Push, climb, detonate, unlock, and rewind your way to the exit.</p>
         </div>
         <div id="engine-status" class="engine-status" data-state="loading" role="status">
           <span class="status-light" aria-hidden="true"></span>
@@ -26,7 +26,7 @@
           <div class="panel-heading">
             <div>
               <p class="label">Level</p>
-              <h2>Rewind stress scenario</h2>
+              <h2 id="level-name">Rewind stress scenario</h2>
             </div>
             <div class="run-status">
               <span>Turn <strong id="turn-count">0</strong></span>
@@ -34,7 +34,7 @@
             </div>
           </div>
 
-          <p class="objective">
+          <p id="objective" class="objective">
             Reach <strong>EXIT</strong>. Barrels arm when they fall, switches open matching doors,
             boxes can bridge lower floors, and ramps change your height one half-step at a time.
           </p>
@@ -77,12 +77,13 @@
             <ol id="event-list" class="event-list"></ol>
           </div>
 
-          <details class="solution">
+          <details id="solution" class="solution">
             <summary>Show test route</summary>
             <p aria-label="east, north, east, east, east, east, north, east, east, east, north, north, east">
               → ↑ → → → → ↑ → → → ↑ ↑ →
             </p>
           </details>
+          <a class="editor-link" href="./editor/">Open level editor →</a>
         </aside>
       </section>
     </main>

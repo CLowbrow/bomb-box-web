@@ -1,3 +1,5 @@
+import { resolveLevelSource } from "./level-source.js";
+
 const statusElement = document.querySelector("#engine-status");
 const boardElement = document.querySelector("#board");
 const outcomeElement = document.querySelector("#outcome");
@@ -6,6 +8,11 @@ const eventListElement = document.querySelector("#event-list");
 const turnCountElement = document.querySelector("#turn-count");
 const rewindButton = document.querySelector("#rewind");
 const restartButton = document.querySelector("#restart");
+const levelTitleElement = document.querySelector("#level-title");
+const levelNameElement = document.querySelector("#level-name");
+const levelLedeElement = document.querySelector("#level-lede");
+const objectiveElement = document.querySelector("#objective");
+const solutionElement = document.querySelector("#solution");
 const directionButtons = [...document.querySelectorAll("[data-direction]")];
 const directionArrows = Object.freeze({
   north: "↑",
@@ -341,21 +348,29 @@ window.addEventListener("keydown", (event) => {
 updateControls();
 
 try {
-  const [{ default: createGameRulesModule }, levelResponse] = await Promise.all([
-    import("./wasm/game_rules.mjs"),
-    fetch("./levels/hardening-run.json"),
+  const wasmModuleUrl = new URL("./wasm/game_rules.mjs", document.baseURI).href;
+  const [{ default: createGameRulesModule }, levelSource] = await Promise.all([
+    import(/* @vite-ignore */ wasmModuleUrl),
+    resolveLevelSource(),
   ]);
-  if (!levelResponse.ok) {
-    throw new Error(`level request failed with ${levelResponse.status}`);
+  level = levelSource.level;
+  if (levelSource.fromEditor) {
+    document.title = `${levelSource.displayName} · Playtest`;
+    levelTitleElement.textContent = "Editor playtest";
+    levelNameElement.textContent = levelSource.displayName;
+    levelLedeElement.textContent = "Playing the latest validated draft from the level editor.";
+    objectiveElement.innerHTML = "Use the normal game controls to test this authored level. <strong>Restart</strong> reloads the same draft.";
+    solutionElement.hidden = true;
   }
-  level = await levelResponse.json();
   gameModule = await createGameRulesModule({
-    locateFile: (file) => new URL(`./wasm/${file}`, import.meta.url).href,
+    locateFile: (file) => new URL(`./wasm/${file}`, document.baseURI).href,
   });
   engine = gameModule.gameRules.createEngine();
   const loaded = loadLevel({ announce: false });
 
-  resultElement.textContent = "Level loaded. Find a route to the exit.";
+  resultElement.textContent = levelSource.fromEditor
+    ? "Editor level loaded. Test it with the normal game controls."
+    : "Level loaded. Find a route to the exit.";
   statusElement.dataset.state = "ready";
   statusElement.lastElementChild.textContent = `WASM API v${loaded.apiVersion} ready`;
   busy = false;

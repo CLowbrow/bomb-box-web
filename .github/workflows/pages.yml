@@ -29,6 +29,15 @@ jobs:
         with:
           version: 5.0.1
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
       - name: Build and verify site
         run: npm test
 

@@ -1,3 +1,4 @@
 dist/
+node_modules/
 bomb-box-state/out/
 .DS_Store

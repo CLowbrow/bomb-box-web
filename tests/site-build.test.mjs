@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -8,8 +8,7 @@ const outputRoot = new URL("../dist/", import.meta.url);
 test("static build contains the browser host and WebAssembly artifacts", async () => {
   const expectedFiles = [
     "index.html",
-    "styles.css",
-    "app.js",
+    "editor/index.html",
     "levels/hardening-run.json",
     "wasm/game_rules.mjs",
     "wasm/game_rules.wasm",
@@ -24,18 +23,16 @@ test("static build contains the browser host and WebAssembly artifacts", async (
 
 test("site uses repository-path-safe relative asset URLs", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
-  const app = await readFile(new URL("app.js", outputRoot), "utf8");
+  const editorHtml = await readFile(new URL("editor/index.html", outputRoot), "utf8");
 
-  assert.match(html, /href="\.\/styles\.css"/);
-  assert.match(html, /src="\.\/app\.js"/);
-  assert.match(app, /import\("\.\/wasm\/game_rules\.mjs"\)/);
-  assert.match(app, /fetch\("\.\/levels\/hardening-run\.json"\)/);
-  assert.doesNotMatch(html, /(?:href|src)="\//);
+  assert.match(html, /src="\.\/assets\/game-/);
+  assert.match(editorHtml, /src="\.\.\/assets\/editor-/);
+  assert.doesNotMatch(`${html}\n${editorHtml}`, /(?:href|src)="\//);
 });
 
 test("site renders the engine's expanded board state", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
-  const app = await readFile(new URL("app.js", outputRoot), "utf8");
+  const app = await builtAsset("game-", ".js");
 
   assert.match(html, /Ramp \(bidirectional\)/);
   assert.match(app, /cell\.lowDirection/);
@@ -69,7 +66,7 @@ test("expanded browser level preserves the engine hardening core", async () => {
 
 test("playable hardening surface includes recovery and a verified route", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
-  const app = await readFile(new URL("app.js", outputRoot), "utf8");
+  const app = await builtAsset("game-", ".js");
 
   assert.match(html, /id="rewind"/);
   assert.match(html, /id="restart"/);
@@ -77,6 +74,31 @@ test("playable hardening surface includes recovery and a verified route", async 
   assert.match(app, /engine\.rewind\(\)/);
   assert.match(app, /engine\.loadLevel\(level\)/);
   assert.match(app, /result\.ticks\.flatMap/);
+});
+
+test("level editor ships as a separate multi-page application", async () => {
+  const html = await readFile(new URL("editor/index.html", outputRoot), "utf8");
+  const app = await builtAsset("editor-", ".js");
+  const gameHtml = await readFile(new URL("index.html", outputRoot), "utf8");
+
+  assert.match(html, /<title>Level Editor<\/title>/);
+  assert.match(gameHtml, /href="\.\/editor\/"/);
+  assert.match(app, /Level Editor/);
+  assert.match(app, /Copy cell/);
+  assert.match(app, /Paste cell/);
+  assert.match(app, /bottomHalfSteps/);
+  assert.match(app, /game-rules-editor:draft:v1/);
+  assert.match(app, /game-rules:playtest:v1/);
+});
+
+test("game bundle implements the versioned editor playtest source", async () => {
+  const app = await builtAsset("game-", ".js");
+
+  assert.match(app, /levelSource/);
+  assert.match(app, /game-rules:playtest:v1/);
+  assert.match(app, /No compatible editor playtest is available/);
+  assert.match(app, /solutionElement\.hidden = true/);
+  assert.match(app, /new URL\(`\.\/wasm\/\$\{file\}`, document\.baseURI\)/);
 });
 
 test("expanded route walks on a box, pushes a box, traverses the ramp, and wins", async () => {
@@ -136,3 +158,10 @@ test("expanded route walks on a box, pushes a box, traverses the ramp, and wins"
     engine.destroy();
   }
 });
+
+async function builtAsset(prefix, suffix) {
+  const names = await readdir(new URL("assets/", outputRoot));
+  const name = names.find((entry) => entry.startsWith(prefix) && entry.endsWith(suffix));
+  assert.ok(name, `expected an ${prefix}*${suffix} asset`);
+  return readFile(new URL(`assets/${name}`, outputRoot), "utf8");
+}

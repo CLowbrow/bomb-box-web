@@ -20,11 +20,18 @@ const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url ?? "/", "http://localhost").pathname);
     const relativePath = normalize(pathname).replace(/^[/\\]+/, "") || "index.html";
-    const filePath = resolve(root, relativePath);
+    let filePath = resolve(root, relativePath);
     if (filePath !== root && !filePath.startsWith(`${root}${sep}`)) {
       throw new Error("invalid path");
     }
-    const file = await stat(filePath);
+    let file = await stat(filePath);
+    if (file.isDirectory()) {
+      filePath = resolve(filePath, "index.html");
+      if (!filePath.startsWith(`${root}${sep}`)) {
+        throw new Error("invalid path");
+      }
+      file = await stat(filePath);
+    }
     if (!file.isFile()) {
       throw new Error("not a file");
     }

@@ -1,19 +1,25 @@
-# Bomb Box playable web test surface
+# Bomb Box web host and level editor
 
-This repository builds a deliberately low-fi, playable browser host for the
-puzzle game's C++ rules engine. The finished output is a dependency-free static
-site, including the generated WebAssembly module, under `dist/`.
+This repository builds a deliberately low-fi, playable browser host and a separate precision level
+editor for the puzzle game's C++ rules engine. The finished static output, including the generated
+WebAssembly module, is written under `dist/`.
 
 The game title is temporary. Technical names intentionally follow the
 title-independent `game_rules` naming used by the engine submodule.
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22.12 or newer
 - CMake 3.25 or newer
 - Ninja
 - Emscripten available through `emcmake`
 - the `bomb-box-state` Git submodule initialized
+
+Install the locked web dependencies once:
+
+```sh
+npm ci
+```
 
 After cloning, initialize the submodule once:
 
@@ -47,10 +53,21 @@ Run the engine's complete WebAssembly contract corpus and verify the static outp
 npm test
 ```
 
-No package install is required: the root project has no runtime or development
-dependencies. The build intentionally performs no bundling or minification. It
-configures the submodule's `wasm-debug` preset, builds `game_rules_wasm`, and
-copies the module alongside the files in `site/`.
+The build configures the submodule's `wasm-debug` preset, builds `game_rules_wasm`, then uses Vite
+to produce the game and editor pages. The output remains ordinary static files with repository-path
+safe relative asset URLs.
+
+## Level editor
+
+Open `http://localhost:4173/editor/` after building and serving. The editor supports complete
+version 1 grids up to 64×64, flat and ramp terrain, exact entity half-step heights, stacks, every
+entity and fixture type, colored doors and switches, multiple exits, cell-bundle copy/paste,
+undo/redo, device-local autosave, JSON import/export, and authoritative WebAssembly validation.
+
+Playtest is deliberately external to the editor: it stores the latest validated level in a
+versioned same-origin handoff and opens the normal game page. See
+[`docs/level-editor-development.md`](docs/level-editor-development.md) for the architecture and
+interaction contract.
 
 ## GitHub Pages
 

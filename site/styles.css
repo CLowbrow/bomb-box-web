@@ -25,6 +25,10 @@ button {
   font: inherit;
 }
 
+a {
+  color: inherit;
+}
+
 .shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
@@ -532,6 +536,22 @@ h2 {
   color: #242424;
   font-size: 1rem;
   letter-spacing: 0.12em;
+}
+
+.editor-link {
+  display: inline-flex;
+  justify-content: center;
+  padding: 10px 12px;
+  border: 1px solid #8c877e;
+  color: #36322c;
+  background: #e8e3d8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.editor-link:hover {
+  background: #ddd5c6;
 }
 
 @media (prefers-reduced-motion: reduce) {

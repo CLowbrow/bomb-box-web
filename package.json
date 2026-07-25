@@ -2,18 +2,32 @@
   "name": "bomb-box-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Low-fi browser test surface for the game-rules engine",
+  "description": "Playable web host and precision level editor for the game-rules engine",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "clean": "node scripts/clean.mjs",
+    "dev": "node scripts/build.mjs && vite --config vite.config.ts --host 127.0.0.1",
     "serve": "node scripts/serve.mjs",
     "start": "npm run build && npm run serve",
-    "test": "npm run build && npm run test:wasm && npm run test:site",
+    "test": "npm run build && npm run test:unit && npm run test:wasm && npm run test:site",
+    "test:unit": "vitest run",
     "test:wasm": "node bomb-box-state/integrations/wasm/smoke_test.mjs dist/wasm/game_rules.mjs bomb-box-state/tests/contracts/browser_vertical_slice/v1/contract.txt bomb-box-state/tests/contracts/engine_hardening/v1/lifecycle.txt bomb-box-state/tests/contracts/engine_hardening/v1/conflicts.txt bomb-box-state/tests/contracts/engine_hardening/v1/rewind-stress.txt",
     "test:site": "node --test tests/site-build.test.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "preact": "^10.27.2"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "@testing-library/preact": "^3.2.4",
+    "@types/node": "^26.1.1",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
   }
 }
