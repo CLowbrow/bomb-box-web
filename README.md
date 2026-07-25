@@ -88,9 +88,20 @@ The page loads the real WebAssembly engine and expands the engine-hardening
 rewind stress level into a thirteen-turn puzzle. Its route exercises pushing,
 falling, barrel arming and chained explosions, a color switch and door, walking
 on a box above a lowered floor, a second box push, two-step ramp traversal, a
-terminal exit, exact rewind, and branching after rewind. The board renders
-stacked entities, elevation, bidirectional ramps at their half-step center
-heights, and all current fixture types.
+terminal exit, exact rewind, and branching after rewind. The playable board uses
+a fixed, screen-aligned orthographic Three.js view. It renders grey terrain as
+solid, subtly segmented columns from a shared half-step baseline, with oriented
+ramps, compressed-height stacks, simple player/box/barrel geometry,
+and all current fixture types. Horizontal cells use one scene unit while each
+logical entity or elevation level uses 0.65 scene units, preserving exact
+half-step and stack relationships without making boxes look cubic.
+
+Each accepted command still resolves atomically in the rules engine. The
+browser presents the returned authoritative tick snapshots in order, animating
+ID-matched movement, fixture changes, arming, and explosions for 500
+milliseconds per tick before enabling player input again. Rewind is shown as
+one equivalent transition, and reduced-motion preferences skip animation
+timing.
 
 Arrow keys, WASD, and the on-screen controls submit authoritative moves;
 Backspace, Z, and the Rewind button use the engine's resolved-state history.

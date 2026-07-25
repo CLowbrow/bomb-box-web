@@ -1,4 +1,8 @@
 import { resolveLevelSource } from "./level-source.js";
+import { performCommand } from "./game/command-runner.js";
+import { coordinateKey } from "./game/scene-model.js";
+import { TICK_DURATION_MS, playEngineResult } from "./game/tick-playback.js";
+import { createGameView } from "./game/three-view.js";
 
 const statusElement = document.querySelector("#engine-status");
 const boardElement = document.querySelector("#board");
@@ -20,29 +24,15 @@ const directionArrows = Object.freeze({
   south: "↓",
   west: "←",
 });
-const rampArrows = Object.freeze({
-  north: "↕",
-  east: "↔",
-  south: "↕",
-  west: "↔",
-});
-const entityGlyphs = Object.freeze({
-  player: "P",
-  box: "■",
-  barrel: "●",
-});
 
 let gameModule;
 let level;
 let engine;
+let gameView;
 let busy = true;
 let outcome = "ongoing";
 let turnCount = 0;
 let entityTypes = new Map();
-
-function coordinateKey({ x, y }) {
-  return `${x},${y}`;
-}
 
 function updateControls() {
   const unavailable = busy || !engine;
@@ -53,137 +43,11 @@ function updateControls() {
   restartButton.disabled = unavailable;
 }
 
-function orderedCells(state) {
-  const { origin, positiveX, positiveY } = state.coordinateSystem;
-  const cells = new Map(state.cells.map((cell) => [coordinateKey(cell.coordinate), cell]));
-  const ordered = [];
-
-  for (let screenRow = 0; screenRow < state.height; screenRow += 1) {
-    const authoredRow = positiveY === "south" ? screenRow : state.height - screenRow - 1;
-    for (let screenColumn = 0; screenColumn < state.width; screenColumn += 1) {
-      const authoredColumn = positiveX === "east"
-        ? screenColumn
-        : state.width - screenColumn - 1;
-      const coordinate = {
-        x: origin.x + authoredColumn,
-        y: origin.y + authoredRow,
-      };
-      ordered.push(cells.get(coordinateKey(coordinate)));
-    }
-  }
-  return ordered;
-}
-
-function groupByCoordinate(values) {
-  const groups = new Map();
-  for (const value of values) {
-    const key = coordinateKey(value.coordinate);
-    const group = groups.get(key) ?? [];
-    group.push(value);
-    groups.set(key, group);
-  }
-  return groups;
-}
-
-function renderFixture(cellElement, fixture, state) {
-  if (!fixture) {
-    return;
-  }
-
-  const fixtureElement = document.createElement("div");
-  fixtureElement.className = `fixture fixture-${fixture.type}`;
-  let description = "exit teleporter";
-
-  if (fixture.type === "switch") {
-    const active = state.activeSwitchColors.includes(fixture.color);
-    fixtureElement.classList.toggle("is-active", active);
-    fixtureElement.classList.add(`fixture-${fixture.color}`);
-    fixtureElement.textContent = active ? "ON" : "SW";
-    description = `${fixture.color} switch, ${active ? "active" : "inactive"}`;
-  } else if (fixture.type === "door") {
-    const open = state.openDoorCoordinates.some(
-      (coordinate) => coordinateKey(coordinate) === coordinateKey(fixture.coordinate),
-    );
-    fixtureElement.classList.toggle("is-open", open);
-    fixtureElement.classList.add(`fixture-${fixture.color}`);
-    fixtureElement.textContent = open ? "OPEN" : "DOOR";
-    description = `${fixture.color} door, ${open ? "open" : "closed"}`;
-  } else {
-    fixtureElement.textContent = "EXIT";
-  }
-
-  fixtureElement.setAttribute("aria-label", description);
-  fixtureElement.title = description;
-  cellElement.append(fixtureElement);
-}
-
-function renderEntities(cellElement, entities, state) {
-  if (!entities?.length) {
-    return;
-  }
-
-  const stackElement = document.createElement("div");
-  stackElement.className = "entity-stack";
-  const armedIds = new Set(state.armedBarrelIds);
-
-  for (const entity of [...entities].sort((a, b) => a.bottomHalfSteps - b.bottomHalfSteps)) {
-    const entityElement = document.createElement("div");
-    const armed = entity.type === "barrel" && armedIds.has(entity.id);
-    entityElement.className = `entity entity-${entity.type}${armed ? " is-armed" : ""}`;
-    entityElement.textContent = entityGlyphs[entity.type] ?? "?";
-    entityElement.setAttribute("aria-label", `${armed ? "armed " : ""}${entity.type} ${entity.id}`);
-    entityElement.title = `${armed ? "Armed " : ""}${entity.type} ${entity.id} at height ${entity.bottomHalfSteps}/2`;
-    stackElement.append(entityElement);
-  }
-  cellElement.append(stackElement);
-}
-
-function render(state) {
-  boardElement.replaceChildren();
-  boardElement.style.setProperty("--columns", state.width);
+function updateStatePresentation(state) {
   outcome = state.outcome;
   outcomeElement.textContent = outcome;
   outcomeElement.dataset.outcome = outcome;
   turnCountElement.textContent = String(turnCount);
-
-  const entities = groupByCoordinate(state.entities);
-  const fixtures = new Map(
-    state.fixtures.map((fixture) => [coordinateKey(fixture.coordinate), fixture]),
-  );
-
-  for (const cell of orderedCells(state)) {
-    const cellElement = document.createElement("div");
-    const coordinate = coordinateKey(cell.coordinate);
-    const elevation = cell.type === "flat" ? cell.elevation : cell.lowElevation + 0.5;
-    cellElement.className = `cell cell-${cell.type}`;
-    cellElement.dataset.coordinate = coordinate;
-    cellElement.dataset.elevation = elevation;
-    cellElement.setAttribute("role", "gridcell");
-    cellElement.setAttribute(
-      "aria-label",
-      `${cell.type} cell at ${coordinate}, elevation ${elevation}`,
-    );
-
-    if (cell.type === "ramp") {
-      const rampDirectionElement = document.createElement("span");
-      rampDirectionElement.className = "ramp-direction";
-      rampDirectionElement.textContent = rampArrows[cell.lowDirection];
-      rampDirectionElement.setAttribute("aria-hidden", "true");
-      cellElement.dataset.lowDirection = cell.lowDirection;
-      cellElement.title = `Bidirectional ramp; descends ${cell.lowDirection}; center elevation z${elevation}`;
-      cellElement.append(rampDirectionElement);
-    }
-
-    const elevationElement = document.createElement("span");
-    elevationElement.className = "elevation";
-    elevationElement.textContent = `z${elevation}`;
-    elevationElement.setAttribute("aria-hidden", "true");
-    cellElement.append(elevationElement);
-
-    renderFixture(cellElement, fixtures.get(coordinate), state);
-    renderEntities(cellElement, entities.get(coordinate), state);
-    boardElement.append(cellElement);
-  }
   updateControls();
 }
 
@@ -249,17 +113,7 @@ function describeResult(result, events) {
   return `${result.operation}: ${result.status}.`;
 }
 
-function applyResult(result) {
-  if (result.operation === "move" && result.accepted) {
-    turnCount += 1;
-  } else if (result.operation === "rewind" && result.accepted) {
-    turnCount = Math.max(0, turnCount - 1);
-  }
-
-  if (result.state) {
-    render(result.state);
-  }
-
+function showResultSummary(result) {
   const events = resultEvents(result);
   resultElement.textContent = describeResult(result, events);
   eventListElement.replaceChildren();
@@ -277,42 +131,64 @@ function applyResult(result) {
   }
 }
 
-function runCommand(command) {
+function animationDuration() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ? 0
+    : TICK_DURATION_MS;
+}
+
+async function applyResult(result) {
+  const nextTurnCount = result.operation === "move" && result.accepted
+    ? turnCount + 1
+    : result.operation === "rewind" && result.accepted
+      ? Math.max(0, turnCount - 1)
+      : result.operation === "loadLevel"
+        ? 0
+        : turnCount;
+
+  eventListElement.replaceChildren();
+  await playEngineResult(result, gameView, {
+    durationMs: animationDuration(),
+    onTickStart: (_tick, index, total) => {
+      resultElement.textContent = `Resolving tick ${index + 1} of ${total}…`;
+    },
+    onState: (state) => updateStatePresentation(state),
+  });
+  turnCount = nextTurnCount;
+  if (result.state) updateStatePresentation(result.state);
+  showResultSummary(result);
+}
+
+async function runCommand(command) {
   if (!engine || busy) {
     return;
   }
-  busy = true;
-  updateControls();
-  try {
-    applyResult(command());
-  } catch (error) {
-    resultElement.textContent = `Command failed: ${error.message}`;
-  } finally {
-    busy = false;
-    updateControls();
-  }
+  await performCommand(command, {
+    setBusy: (value) => {
+      busy = value;
+      updateControls();
+    },
+    present: applyResult,
+    onError: (error) => {
+      resultElement.textContent = `Command failed: ${error.message}`;
+    },
+  });
 }
 
-function loadLevel({ announce = true } = {}) {
+function loadLevel() {
   const loaded = engine.loadLevel(level);
   if (loaded.status !== "loaded" || !loaded.state) {
     throw new Error(`engine rejected level: ${loaded.status}`);
   }
-  turnCount = 0;
   entityTypes = new Map(level.entities.map((entity) => [entity.id, entity.type]));
-  render(loaded.state);
-  eventListElement.replaceChildren();
-  if (announce) {
-    resultElement.textContent = "Level restarted. History cleared.";
-  }
   return loaded;
 }
 
 for (const button of directionButtons) {
-  button.addEventListener("click", () => runCommand(() => engine.move(button.dataset.direction)));
+  button.addEventListener("click", () => void runCommand(() => engine.move(button.dataset.direction)));
 }
-rewindButton.addEventListener("click", () => runCommand(() => engine.rewind()));
-restartButton.addEventListener("click", () => runCommand(() => loadLevel()));
+rewindButton.addEventListener("click", () => void runCommand(() => engine.rewind()));
+restartButton.addEventListener("click", () => void runCommand(() => loadLevel()));
 
 const keyDirections = {
   ArrowUp: "north",
@@ -336,12 +212,12 @@ window.addEventListener("keydown", (event) => {
   const direction = keyDirections[event.key];
   if (direction) {
     event.preventDefault();
-    runCommand(() => engine.move(direction));
+    void runCommand(() => engine.move(direction));
     return;
   }
   if (event.key === "Backspace" || event.key.toLowerCase() === "z") {
     event.preventDefault();
-    runCommand(() => engine.rewind());
+    void runCommand(() => engine.rewind());
   }
 });
 
@@ -366,7 +242,9 @@ try {
     locateFile: (file) => new URL(`./wasm/${file}`, document.baseURI).href,
   });
   engine = gameModule.gameRules.createEngine();
-  const loaded = loadLevel({ announce: false });
+  gameView = createGameView(boardElement);
+  const loaded = loadLevel();
+  await applyResult(loaded);
 
   resultElement.textContent = levelSource.fromEditor
     ? "Editor level loaded. Test it with the normal game controls."
@@ -383,6 +261,7 @@ try {
 
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
+    gameView?.dispose();
     engine?.destroy();
   }
 });

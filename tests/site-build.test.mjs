@@ -30,18 +30,21 @@ test("site uses repository-path-safe relative asset URLs", async () => {
   assert.doesNotMatch(`${html}\n${editorHtml}`, /(?:href|src)="\//);
 });
 
-test("site renders the engine's expanded board state", async () => {
+test("site renders the engine's expanded board state through Three.js", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
   const app = await builtAsset("game-", ".js");
+  const editor = await builtAsset("editor-", ".js");
 
   assert.match(html, /Ramp \(bidirectional\)/);
-  assert.match(app, /cell\.lowDirection/);
-  assert.match(app, /rampArrows\[cell\.lowDirection\]/);
-  assert.match(app, /groupByCoordinate\(state\.entities\)/);
-  assert.match(app, /state\.activeSwitchColors/);
-  assert.match(app, /state\.openDoorCoordinates/);
-  assert.match(app, /state\.armedBarrelIds/);
-  assert.match(app, /cell\.lowElevation \+ 0\.5/);
+  assert.match(html, /role="img" aria-label="Loading three-dimensional game board"/);
+  assert.match(app, /WebGLRenderer/);
+  assert.match(app, /OrthographicCamera/);
+  assert.match(app, /InstancedMesh/);
+  assert.match(app, /levelHeight: 0\.65/);
+  assert.match(app, /halfStep: 0\.325/);
+  assert.match(app, /tick\.stateAfter/);
+  assert.doesNotMatch(app, /role", "gridcell"/);
+  assert.doesNotMatch(editor, /WebGLRenderer/);
 });
 
 test("expanded browser level preserves the engine hardening core", async () => {
@@ -74,6 +77,8 @@ test("playable hardening surface includes recovery and a verified route", async 
   assert.match(app, /engine\.rewind\(\)/);
   assert.match(app, /engine\.loadLevel\(level\)/);
   assert.match(app, /result\.ticks\.flatMap/);
+  assert.match(app, /Resolving tick/);
+  assert.match(app, /prefers-reduced-motion/);
 });
 
 test("level editor ships as a separate multi-page application", async () => {
