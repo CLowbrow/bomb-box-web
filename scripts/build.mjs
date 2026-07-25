@@ -1,4 +1,4 @@
-import { access, cp, mkdir } from "node:fs/promises";
+import { access, cp, mkdir, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
@@ -50,5 +50,21 @@ for (const artifact of ["game_rules.mjs", "game_rules.wasm"]) {
   await requireFile(source, `Expected WebAssembly build artifact is missing: ${artifact}`);
   await cp(source, new URL(`wasm/${artifact}`, `file://${outputRoot}`));
 }
+
+await mkdir(new URL("server/", `file://${outputRoot}`), { recursive: true });
+await writeFile(
+  new URL("server/index.js", `file://${outputRoot}`),
+  `export default {
+  async fetch(request, env) {
+    const response = await env.ASSETS.fetch(request);
+    if (response.status !== 404) return response;
+
+    const fallbackUrl = new URL(request.url);
+    fallbackUrl.pathname = "/index.html";
+    return env.ASSETS.fetch(new Request(fallbackUrl, request));
+  },
+};
+`,
+);
 
 console.log(`Static site generated in ${outputRoot}`);
