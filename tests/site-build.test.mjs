@@ -37,13 +37,14 @@ test("site renders the engine's expanded board state", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
   const app = await readFile(new URL("app.js", outputRoot), "utf8");
 
-  assert.match(html, /Ramp \(downhill\)/);
+  assert.match(html, /Ramp \(bidirectional\)/);
   assert.match(app, /cell\.lowDirection/);
+  assert.match(app, /rampArrows\[cell\.lowDirection\]/);
   assert.match(app, /groupByCoordinate\(state\.entities\)/);
   assert.match(app, /state\.activeSwitchColors/);
   assert.match(app, /state\.openDoorCoordinates/);
   assert.match(app, /state\.armedBarrelIds/);
-  assert.match(app, /cell\.lowElevation/);
+  assert.match(app, /cell\.lowElevation \+ 0\.5/);
 });
 
 test("expanded browser level preserves the engine hardening core", async () => {

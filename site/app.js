@@ -13,6 +13,12 @@ const directionArrows = Object.freeze({
   south: "↓",
   west: "←",
 });
+const rampArrows = Object.freeze({
+  north: "↕",
+  east: "↔",
+  south: "↕",
+  west: "↔",
+});
 const entityGlyphs = Object.freeze({
   player: "P",
   box: "■",
@@ -141,7 +147,7 @@ function render(state) {
   for (const cell of orderedCells(state)) {
     const cellElement = document.createElement("div");
     const coordinate = coordinateKey(cell.coordinate);
-    const elevation = cell.type === "flat" ? cell.elevation : cell.lowElevation;
+    const elevation = cell.type === "flat" ? cell.elevation : cell.lowElevation + 0.5;
     cellElement.className = `cell cell-${cell.type}`;
     cellElement.dataset.coordinate = coordinate;
     cellElement.dataset.elevation = elevation;
@@ -154,10 +160,10 @@ function render(state) {
     if (cell.type === "ramp") {
       const rampDirectionElement = document.createElement("span");
       rampDirectionElement.className = "ramp-direction";
-      rampDirectionElement.textContent = directionArrows[cell.lowDirection];
+      rampDirectionElement.textContent = rampArrows[cell.lowDirection];
       rampDirectionElement.setAttribute("aria-hidden", "true");
       cellElement.dataset.lowDirection = cell.lowDirection;
-      cellElement.title = `Ramp descends ${cell.lowDirection}`;
+      cellElement.title = `Bidirectional ramp; descends ${cell.lowDirection}; center elevation z${elevation}`;
       cellElement.append(rampDirectionElement);
     }
 

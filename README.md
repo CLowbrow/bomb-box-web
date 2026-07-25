@@ -72,8 +72,8 @@ rewind stress level into a thirteen-turn puzzle. Its route exercises pushing,
 falling, barrel arming and chained explosions, a color switch and door, walking
 on a box above a lowered floor, a second box push, two-step ramp traversal, a
 terminal exit, exact rewind, and branching after rewind. The board renders
-stacked entities, elevation, ramps and their downhill direction, and all current
-fixture types.
+stacked entities, elevation, bidirectional ramps at their half-step center
+heights, and all current fixture types.
 
 Arrow keys, WASD, and the on-screen controls submit authoritative moves;
 Backspace, Z, and the Rewind button use the engine's resolved-state history.
