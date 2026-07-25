@@ -84,12 +84,17 @@ domain and under a repository path such as `https://example.github.io/repo/`.
 
 ## Playable level
 
-The page loads the real WebAssembly engine and expands the engine-hardening
-rewind stress level into a thirteen-turn puzzle. Its route exercises pushing,
-falling, barrel arming and chained explosions, a color switch and door, walking
-on a box above a lowered floor, a second box push, two-step ramp traversal, a
-terminal exit, exact rewind, and branching after rewind. The playable board uses
-a fixed, screen-aligned orthographic Three.js view. It renders grey terrain as
+The page loads the real WebAssembly engine and offers a compact set of starter levels. The level
+links are populated automatically from version 1 JSON files in `site/levels/canned/`, sorted by
+filename. The numeric filename prefix controls order and is omitted from the displayed name, so
+`03-door-signal.json` appears as “Door Signal.” Add, remove, rename, or replace files in that folder
+to change the picker without editing the UI.
+
+The separate `site/levels/hardening-run.json` fixture preserves the original thirteen-turn engine
+coverage for automated verification. Its route exercises pushing, falling, barrel arming and
+chained explosions, a color switch and door, walking on a box above a lowered floor, a second box
+push, two-step ramp traversal, a terminal exit, exact rewind, and branching after rewind. The
+playable board renders grey terrain as
 solid, subtly segmented columns from a shared half-step baseline, with oriented
 ramps, compressed-height stacks, simple player/box/barrel geometry,
 all current fixture types, and an animated abstract water shader beneath the level. Horizontal cells use
@@ -106,6 +111,6 @@ timing.
 
 Arrow keys, WASD, and the on-screen controls submit authoritative moves;
 Backspace, Z, and the Rewind button use the engine's resolved-state history.
-Restart reloads the authored level and clears history. The last-turn feed shows
-the semantic events and derived ticks returned by the engine rather than
-reconstructing rules state in the browser.
+Restart reloads the authored level and clears history. Each turn logs the semantic events and
+derived ticks returned by the engine in the browser console rather than reconstructing rules state
+in the interface.

@@ -1,0 +1,28 @@
+{
+  "format": "game-rules-level",
+  "version": 1,
+  "coordinateSystem": { "origin": { "x": 0, "y": 0 }, "positiveX": "east", "positiveY": "north" },
+  "width": 6,
+  "height": 2,
+  "cells": [
+    { "coordinate": { "x": 0, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 1, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 2, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 3, "y": 0 }, "type": "flat", "elevation": 0 },
+    { "coordinate": { "x": 4, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 5, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 0, "y": 1 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 1, "y": 1 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 2, "y": 1 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 3, "y": 1 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 4, "y": 1 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 5, "y": 1 }, "type": "flat", "elevation": 1 }
+  ],
+  "fixtures": [
+    { "coordinate": { "x": 5, "y": 1 }, "type": "exit" }
+  ],
+  "entities": [
+    { "id": "1", "type": "player", "coordinate": { "x": 0, "y": 0 }, "bottomHalfSteps": 2 },
+    { "id": "2", "type": "barrel", "coordinate": { "x": 2, "y": 0 }, "bottomHalfSteps": 2 }
+  ]
+}

@@ -10,6 +10,8 @@ test("static build contains the browser host and WebAssembly artifacts", async (
     "index.html",
     "editor/index.html",
     "levels/hardening-run.json",
+    "levels/canned/01-first-steps.json",
+    "levels/canned/05-barrel-drop.json",
     "wasm/game_rules.mjs",
     "wasm/game_rules.wasm",
   ];
@@ -36,7 +38,9 @@ test("site renders the engine's expanded board state through Three.js", async ()
   const editor = await builtAsset("editor-", ".js");
   const threeView = await readFile(new URL("../site/game/three-view.js", import.meta.url), "utf8");
 
-  assert.match(html, /Ramp \(bidirectional\)/);
+  assert.match(html, /id="how-to-play"[^>]*popover/);
+  assert.match(html, /A barrel arms when it falls/);
+  assert.match(html, /<div class="legend" aria-label="Board legend">/);
   assert.match(html, /role="img" aria-label="Loading three-dimensional game board"/);
   assert.match(app, /WebGLRenderer/);
   assert.match(threeView, /new THREE\.PerspectiveCamera/);
@@ -74,17 +78,20 @@ test("expanded browser level preserves the engine hardening core", async () => {
   );
 });
 
-test("playable hardening surface includes recovery and a verified route", async () => {
+test("minimal game surface includes recovery, JSON-backed levels, and console turn logging", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
   const app = await builtAsset("game-", ".js");
 
   assert.match(html, /id="rewind"/);
   assert.match(html, /id="restart"/);
-  assert.match(html, /→ ↑ → → → → ↑ → → → ↑ ↑ →/);
+  assert.match(html, /id="level-list"/);
+  assert.doesNotMatch(html, /id="event-list"/);
+  assert.doesNotMatch(html, /Show test route/);
   assert.match(app, /engine\.rewind\(\)/);
-  assert.match(app, /engine\.loadLevel\(level\)/);
+  assert.match(app, /engine\.loadLevel\(nextLevel\)/);
   assert.match(app, /result\.ticks\.flatMap/);
-  assert.match(app, /Resolving tick/);
+  assert.match(app, /console\.groupCollapsed/);
+  assert.match(app, /dataset\.levelId/);
   assert.match(app, /prefers-reduced-motion/);
 });
 
@@ -109,8 +116,29 @@ test("game bundle implements the versioned editor playtest source", async () => 
   assert.match(app, /levelSource/);
   assert.match(app, /game-rules:playtest:v1/);
   assert.match(app, /No compatible editor playtest is available/);
-  assert.match(app, /solutionElement\.hidden = true/);
+  assert.match(app, /setCurrentLevel\(levelSource\)/);
   assert.match(app, /new URL\(`\.\/wasm\/\$\{file\}`, document\.baseURI\)/);
+});
+
+test("canned level folder contains five to ten valid editable JSON levels", async () => {
+  const entries = (await readdir(new URL("levels/canned/", outputRoot)))
+    .filter((name) => name.endsWith(".json"));
+  assert.ok(entries.length >= 5 && entries.length <= 10);
+
+  const { default: createGameRulesModule } = await import(
+    new URL("wasm/game_rules.mjs", outputRoot)
+  );
+  const module = await createGameRulesModule();
+  const engine = module.gameRules.createEngine();
+
+  try {
+    for (const entry of entries) {
+      const level = JSON.parse(await readFile(new URL(`levels/canned/${entry}`, outputRoot), "utf8"));
+      assert.equal(engine.loadLevel(level).status, "loaded", `${entry} should load in the engine`);
+    }
+  } finally {
+    engine.destroy();
+  }
 });
 
 test("expanded route walks on a box, pushes a box, traverses the ramp, and wins", async () => {

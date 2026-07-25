@@ -3,61 +3,44 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Playable browser host for the game-rules engine hardening level">
-    <title>Engine Hardening Run</title>
+    <meta name="description" content="A small turn-based box and barrel puzzle">
+    <title>Bomb Box</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <main class="shell">
-      <header class="masthead">
-        <div>
-          <p class="eyebrow">Playable engine test</p>
-          <h1 id="level-title">Hardening Run</h1>
-          <p id="level-lede" class="lede">Push, climb, detonate, unlock, and rewind your way to the exit.</p>
-        </div>
-        <div id="engine-status" class="engine-status" data-state="loading" role="status">
-          <span class="status-light" aria-hidden="true"></span>
-          <span>Loading engine…</span>
-        </div>
-      </header>
+      <h1 class="sr-only">Bomb Box</h1>
 
-      <section class="workbench" aria-label="Hardening Run puzzle">
+      <section class="workbench" aria-label="Bomb Box puzzle">
         <div class="board-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="label">Level</p>
-              <h2 id="level-name">Rewind stress scenario</h2>
+          <div class="game-bar">
+            <div class="current-level">
+              <span>Level</span>
+              <strong id="level-name">Loading…</strong>
             </div>
+            <div class="page-actions">
+              <button class="text-button" type="button" popovertarget="how-to-play">How to play</button>
+              <a href="./editor/">Editor</a>
+            </div>
+          </div>
+
+          <nav id="level-list" class="level-list" aria-label="Canned levels"></nav>
+
+          <div id="board" class="board" role="img" aria-label="Loading three-dimensional game board"></div>
+
+          <div class="board-footer">
             <div class="run-status">
               <span>Turn <strong id="turn-count">0</strong></span>
               <output id="outcome" class="outcome" data-outcome="ongoing">ongoing</output>
             </div>
-          </div>
-
-          <p id="objective" class="objective">
-            Reach <strong>EXIT</strong>. Barrels arm when they fall, switches open matching doors,
-            boxes can bridge lower floors, and ramps change your height one half-step at a time.
-          </p>
-
-          <div id="board" class="board" role="img" aria-label="Loading three-dimensional game board"></div>
-
-          <div class="legend" aria-label="Board legend">
-            <span><i class="swatch swatch-player">P</i>Player</span>
-            <span><i class="swatch swatch-box">■</i>Box</span>
-            <span><i class="swatch swatch-barrel">●</i>Barrel</span>
-            <span><i class="swatch swatch-switch">SW</i>Switch</span>
-            <span><i class="swatch swatch-door">D</i>Door</span>
-            <span><i class="swatch swatch-exit">◇</i>Exit</span>
-            <span><i class="swatch swatch-ramp">↕</i>Ramp (bidirectional)</span>
+            <div id="engine-status" class="engine-status" data-state="loading" role="status">
+              <span class="status-light" aria-hidden="true"></span>
+              <span>Loading</span>
+            </div>
           </div>
         </div>
 
         <aside class="control-panel" aria-label="Game controls">
-          <div>
-            <p class="label">Input</p>
-            <h2>Move one cell</h2>
-          </div>
-
           <div class="dpad" aria-label="Directional controls">
             <button type="button" data-direction="north" aria-label="Move north">↑</button>
             <button type="button" data-direction="west" aria-label="Move west">←</button>
@@ -69,23 +52,37 @@
             <button id="rewind" class="secondary-control" type="button">Rewind</button>
             <button id="restart" class="secondary-control" type="button">Restart</button>
           </div>
-          <p class="hint">Arrow keys / WASD · Backspace / Z to rewind</p>
-
-          <div class="readout" aria-live="polite">
-            <p class="label">Last turn</p>
-            <output id="result">Waiting for engine.</output>
-            <ol id="event-list" class="event-list"></ol>
-          </div>
-
-          <details id="solution" class="solution">
-            <summary>Show test route</summary>
-            <p aria-label="east, north, east, east, east, east, north, east, east, east, north, north, east">
-              → ↑ → → → → ↑ → → → ↑ ↑ →
-            </p>
-          </details>
-          <a class="editor-link" href="./editor/">Open level editor →</a>
+          <p class="hint">Arrow keys / WASD<br>Backspace / Z to rewind</p>
         </aside>
       </section>
+
+      <div id="how-to-play" class="rules-popover" popover>
+        <div class="popover-heading">
+          <div>
+            <p class="eyebrow">Quick guide</p>
+            <h2>How to play</h2>
+          </div>
+          <button class="close-button" type="button" popovertarget="how-to-play" popovertargetaction="hide" aria-label="Close how to play">×</button>
+        </div>
+
+        <ul class="rules-list">
+          <li>Move one space at a time. Push a single box or barrel; you cannot pull.</li>
+          <li>You can step onto boxes, but not jump up or down ledges. Use ramps to change height.</li>
+          <li>Hold every switch of a color to open doors of that color.</li>
+          <li>A barrel arms when it falls, then explodes in a plus shape. Keep your distance.</li>
+          <li>Reach an exit to win. If a move goes wrong, rewind one completed turn.</li>
+        </ul>
+
+        <div class="legend" aria-label="Board legend">
+          <span><i class="swatch swatch-player">P</i>Player</span>
+          <span><i class="swatch swatch-box">■</i>Box</span>
+          <span><i class="swatch swatch-barrel">●</i>Barrel</span>
+          <span><i class="swatch swatch-switch">SW</i>Switch</span>
+          <span><i class="swatch swatch-door">D</i>Door</span>
+          <span><i class="swatch swatch-exit">◇</i>Exit</span>
+          <span><i class="swatch swatch-ramp">↕</i>Ramp</span>
+        </div>
+      </div>
     </main>
 
     <script type="module" src="./app.js"></script>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLevel, toLevelDefinition } from "../site/editor/domain";
 import { PLAYTEST_STORAGE_KEY } from "../site/editor/storage";
-import { resolveLevelSource } from "../site/level-source.js";
+import { cannedLevels, resolveLevelSource } from "../site/level-source.js";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -16,18 +16,25 @@ class MemoryStorage implements Storage {
 afterEach(() => vi.restoreAllMocks());
 
 describe("game level source", () => {
-  it("uses the bundled level by default", async () => {
+  it("uses the first canned level by default", async () => {
     const storage = new MemoryStorage();
-    const level = toLevelDefinition(createLevel());
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => level });
-    vi.stubGlobal("fetch", fetchMock);
     const source = await resolveLevelSource({
       location: new URL("https://example.test/game/") as unknown as Location,
       storage,
     });
     expect(source.fromEditor).toBe(false);
-    expect(source.level).toEqual(level);
-    expect(fetchMock).toHaveBeenCalledWith("./levels/hardening-run.json");
+    expect(source).toMatchObject(cannedLevels[0]);
+  });
+
+  it("selects a canned level from the URL", async () => {
+    const storage = new MemoryStorage();
+    const requested = cannedLevels.at(-1)!;
+    const source = await resolveLevelSource({
+      location: new URL(`https://example.test/game/?level=${requested.id}`) as unknown as Location,
+      storage,
+    });
+    expect(source).toMatchObject(requested);
+    expect(source.fromEditor).toBe(false);
   });
 
   it("loads a compatible editor handoff without fetching the sample", async () => {

@@ -1,0 +1,20 @@
+{
+  "format": "game-rules-level",
+  "version": 1,
+  "coordinateSystem": { "origin": { "x": 0, "y": 0 }, "positiveX": "east", "positiveY": "north" },
+  "width": 5,
+  "height": 1,
+  "cells": [
+    { "coordinate": { "x": 0, "y": 0 }, "type": "flat", "elevation": 0 },
+    { "coordinate": { "x": 1, "y": 0 }, "type": "ramp", "lowDirection": "west", "lowElevation": 0 },
+    { "coordinate": { "x": 2, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 3, "y": 0 }, "type": "flat", "elevation": 1 },
+    { "coordinate": { "x": 4, "y": 0 }, "type": "flat", "elevation": 1 }
+  ],
+  "fixtures": [
+    { "coordinate": { "x": 4, "y": 0 }, "type": "exit" }
+  ],
+  "entities": [
+    { "id": "1", "type": "player", "coordinate": { "x": 0, "y": 0 }, "bottomHalfSteps": 0 }
+  ]
+}

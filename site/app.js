@@ -1,4 +1,4 @@
-import { resolveLevelSource } from "./level-source.js";
+import { cannedLevels, findCannedLevel, resolveLevelSource } from "./level-source.js";
 import { createLatestMoveRunner, performCommand } from "./game/command-runner.js";
 import { coordinateKey } from "./game/scene-model.js";
 import { TICK_DURATION_MS, playEngineResult } from "./game/tick-playback.js";
@@ -7,16 +7,12 @@ import { createGameView } from "./game/three-view.js";
 const statusElement = document.querySelector("#engine-status");
 const boardElement = document.querySelector("#board");
 const outcomeElement = document.querySelector("#outcome");
-const resultElement = document.querySelector("#result");
-const eventListElement = document.querySelector("#event-list");
 const turnCountElement = document.querySelector("#turn-count");
 const rewindButton = document.querySelector("#rewind");
 const restartButton = document.querySelector("#restart");
-const levelTitleElement = document.querySelector("#level-title");
 const levelNameElement = document.querySelector("#level-name");
-const levelLedeElement = document.querySelector("#level-lede");
-const objectiveElement = document.querySelector("#objective");
-const solutionElement = document.querySelector("#solution");
+const levelListElement = document.querySelector("#level-list");
+const howToPlayElement = document.querySelector("#how-to-play");
 const directionButtons = [...document.querySelectorAll("[data-direction]")];
 const directionArrows = Object.freeze({
   north: "↑",
@@ -25,8 +21,8 @@ const directionArrows = Object.freeze({
   west: "←",
 });
 
-let gameModule;
 let level;
+let currentLevelId = null;
 let engine;
 let gameView;
 let busy = true;
@@ -34,6 +30,11 @@ let outcome = "ongoing";
 let turnCount = 0;
 let entityTypes = new Map();
 let moveRunner;
+
+function setStatus(state, message) {
+  statusElement.dataset.state = state;
+  statusElement.lastElementChild.textContent = message;
+}
 
 function updateControls() {
   const unavailable = busy || !engine;
@@ -44,6 +45,7 @@ function updateControls() {
   }
   rewindButton.disabled = unavailable;
   restartButton.disabled = unavailable;
+  levelListElement.dataset.busy = String(unavailable);
 }
 
 function updateStatePresentation(state) {
@@ -52,6 +54,19 @@ function updateStatePresentation(state) {
   outcomeElement.dataset.outcome = outcome;
   turnCountElement.textContent = String(turnCount);
   updateControls();
+}
+
+function setCurrentLevel({ id, displayName }) {
+  currentLevelId = id;
+  levelNameElement.textContent = displayName;
+  document.title = `${displayName} · Bomb Box`;
+  for (const link of levelListElement.querySelectorAll("[data-level-id]")) {
+    if (link.dataset.levelId === id) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  }
 }
 
 function entityName(id) {
@@ -63,30 +78,18 @@ function describeEvent(event) {
     const movement = event.cause === "player" ? "moved" : event.cause;
     return `${entityName(event.entityId)} ${movement} to ${coordinateKey(event.to)}`;
   }
-  if (event.type === "barrelArmed") {
-    return `barrel ${event.entityId} armed`;
-  }
+  if (event.type === "barrelArmed") return `barrel ${event.entityId} armed`;
   if (event.type === "barrelExploded") {
     return `barrel ${event.entityId} exploded at ${coordinateKey(event.coordinate)}`;
   }
   if (event.type === "switchChanged") {
     return `${event.color} switch ${event.active ? "activated" : "released"}`;
   }
-  if (event.type === "doorOpened") {
-    return `${event.color} door opened`;
-  }
-  if (event.type === "doorClosed") {
-    return `${event.color} door closed`;
-  }
-  if (event.type === "levelWon") {
-    return "exit reached — level won";
-  }
-  if (event.type === "levelLost") {
-    return "player lost";
-  }
-  if (event.type === "stateRewound") {
-    return "previous turn restored";
-  }
+  if (event.type === "doorOpened") return `${event.color} door opened`;
+  if (event.type === "doorClosed") return `${event.color} door closed`;
+  if (event.type === "levelWon") return "exit reached — level won";
+  if (event.type === "levelLost") return "player lost";
+  if (event.type === "stateRewound") return "previous turn restored";
   return event.type.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 }
 
@@ -99,7 +102,7 @@ function resultEvents(result) {
   return (result.events ?? []).map((event) => ({ tick: null, event }));
 }
 
-function describeResult(result, events) {
+function describeResult(result) {
   if (result.operation === "move") {
     if (!result.accepted) {
       return `Blocked ${result.direction ?? "move"}: ${result.status.replaceAll("_", " ")}.`;
@@ -110,28 +113,28 @@ function describeResult(result, events) {
   if (result.operation === "rewind") {
     return result.accepted ? "Rewound one accepted turn." : "Nothing left to rewind.";
   }
-  if (result.operation === "loadLevel") {
-    return "Level restarted. History cleared.";
-  }
+  if (result.operation === "loadLevel") return "Level loaded. History cleared.";
   return `${result.operation}: ${result.status}.`;
 }
 
-function showResultSummary(result) {
-  const events = resultEvents(result);
-  resultElement.textContent = describeResult(result, events);
-  eventListElement.replaceChildren();
-  if (events.length === 0) {
-    const item = document.createElement("li");
-    item.textContent = "No secondary rules events.";
-    item.className = "muted-event";
-    eventListElement.append(item);
-  } else {
-    for (const { tick, event } of events) {
-      const item = document.createElement("li");
-      item.textContent = `${tick === null ? "" : `t${tick} · `}${describeEvent(event)}`;
-      eventListElement.append(item);
-    }
+function logResult(result) {
+  const label = result.operation === "move" && result.accepted
+    ? `Turn ${turnCount}`
+    : result.operation === "rewind"
+      ? "Rewind"
+      : "Level";
+  console.groupCollapsed(`[Bomb Box] ${label} · ${describeResult(result)}`);
+  console.log({
+    operation: result.operation,
+    status: result.status,
+    accepted: result.accepted,
+    direction: result.direction,
+    outcome: result.state?.outcome,
+  });
+  for (const { tick, event } of resultEvents(result)) {
+    console.log(`${tick === null ? "event" : `tick ${tick}`} · ${describeEvent(event)}`, event);
   }
+  console.groupEnd();
 }
 
 function animationDuration() {
@@ -149,23 +152,17 @@ async function applyResult(result) {
         ? 0
         : turnCount;
 
-  eventListElement.replaceChildren();
   await playEngineResult(result, gameView, {
     durationMs: animationDuration(),
-    onTickStart: (_tick, index, total) => {
-      resultElement.textContent = `Resolving tick ${index + 1} of ${total}…`;
-    },
     onState: (state) => updateStatePresentation(state),
   });
   turnCount = nextTurnCount;
   if (result.state) updateStatePresentation(result.state);
-  showResultSummary(result);
+  logResult(result);
 }
 
 async function runCommand(command) {
-  if (!engine || busy) {
-    return;
-  }
+  if (!engine || busy) return;
   await performCommand(command, {
     setBusy: (value) => {
       busy = value;
@@ -173,7 +170,8 @@ async function runCommand(command) {
     },
     present: applyResult,
     onError: (error) => {
-      resultElement.textContent = `Command failed: ${error.message}`;
+      setStatus("error", "Command failed");
+      console.error("[Bomb Box] Command failed", error);
     },
   });
 }
@@ -187,13 +185,51 @@ moveRunner = createLatestMoveRunner(
   },
 );
 
-function loadLevel() {
-  const loaded = engine.loadLevel(level);
+function loadLevel(nextLevel = level) {
+  const loaded = engine.loadLevel(nextLevel);
   if (loaded.status !== "loaded" || !loaded.state) {
     throw new Error(`engine rejected level: ${loaded.status}`);
   }
+  level = nextLevel;
   entityTypes = new Map(level.entities.map((entity) => [entity.id, entity.type]));
   return loaded;
+}
+
+async function switchToCannedLevel(entry, { updateHistory = true } = {}) {
+  if (!engine || busy || !entry) return;
+  busy = true;
+  updateControls();
+  try {
+    const loaded = loadLevel(entry.level);
+    await applyResult(loaded);
+    setCurrentLevel(entry);
+    setStatus("ready", "Ready");
+    if (updateHistory) {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.searchParams.set("level", entry.id);
+      history.pushState({ level: entry.id }, "", url);
+    }
+  } catch (error) {
+    setStatus("error", "Level failed");
+    console.error(`[Bomb Box] Could not load ${entry.displayName}`, error);
+  } finally {
+    busy = false;
+    updateControls();
+  }
+}
+
+for (const entry of cannedLevels) {
+  const link = document.createElement("a");
+  link.className = "level-link";
+  link.dataset.levelId = entry.id;
+  link.href = `./?level=${encodeURIComponent(entry.id)}`;
+  link.textContent = entry.displayName;
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    void switchToCannedLevel(entry);
+  });
+  levelListElement.append(link);
 }
 
 for (const button of directionButtons) {
@@ -218,9 +254,7 @@ const keyDirections = {
 };
 
 window.addEventListener("keydown", (event) => {
-  if (event.repeat) {
-    return;
-  }
+  if (event.repeat || howToPlayElement.matches(":popover-open")) return;
   const direction = keyDirections[event.key];
   if (direction) {
     event.preventDefault();
@@ -233,6 +267,12 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
+window.addEventListener("popstate", () => {
+  const id = new URLSearchParams(window.location.search).get("level");
+  const entry = findCannedLevel(id) ?? cannedLevels[0];
+  if (entry?.id !== currentLevelId) void switchToCannedLevel(entry, { updateHistory: false });
+});
+
 updateControls();
 
 try {
@@ -241,34 +281,21 @@ try {
     import(/* @vite-ignore */ wasmModuleUrl),
     resolveLevelSource(),
   ]);
-  level = levelSource.level;
-  if (levelSource.fromEditor) {
-    document.title = `${levelSource.displayName} · Playtest`;
-    levelTitleElement.textContent = "Editor playtest";
-    levelNameElement.textContent = levelSource.displayName;
-    levelLedeElement.textContent = "Playing the latest validated draft from the level editor.";
-    objectiveElement.innerHTML = "Use the normal game controls to test this authored level. <strong>Restart</strong> reloads the same draft.";
-    solutionElement.hidden = true;
-  }
-  gameModule = await createGameRulesModule({
+  const gameModule = await createGameRulesModule({
     locateFile: (file) => new URL(`./wasm/${file}`, document.baseURI).href,
   });
   engine = gameModule.gameRules.createEngine();
   gameView = createGameView(boardElement);
-  const loaded = loadLevel();
+  const loaded = loadLevel(levelSource.level);
+  setCurrentLevel(levelSource);
   await applyResult(loaded);
 
-  resultElement.textContent = levelSource.fromEditor
-    ? "Editor level loaded. Test it with the normal game controls."
-    : "Level loaded. Find a route to the exit.";
-  statusElement.dataset.state = "ready";
-  statusElement.lastElementChild.textContent = `WASM API v${loaded.apiVersion} ready`;
+  setStatus("ready", "Ready");
   busy = false;
   updateControls();
 } catch (error) {
-  statusElement.dataset.state = "error";
-  statusElement.lastElementChild.textContent = "Engine failed to load";
-  resultElement.textContent = error.message;
+  setStatus("error", "Engine failed");
+  console.error("[Bomb Box] Engine failed to load", error);
 }
 
 window.addEventListener("pagehide", (event) => {

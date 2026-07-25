@@ -1,5 +1,10 @@
 export const PLAYTEST_STORAGE_KEY = "game-rules:playtest:v1";
 
+const cannedLevelModules = import.meta.glob("./levels/canned/*.json", {
+  eager: true,
+  import: "default",
+});
+
 function isLevel(value) {
   return value
     && typeof value === "object"
@@ -10,16 +15,34 @@ function isLevel(value) {
     && Array.isArray(value.entities);
 }
 
+function displayNameFor(id) {
+  return id
+    .replace(/^\d+[-_]?/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export const cannedLevels = Object.freeze(
+  Object.entries(cannedLevelModules)
+    .map(([path, level]) => {
+      const id = path.split("/").at(-1).replace(/\.json$/, "");
+      if (!isLevel(level)) throw new Error(`Canned level ${id} is not a version 1 game-rules level.`);
+      return Object.freeze({ id, displayName: displayNameFor(id), level });
+    })
+    .sort((left, right) => left.id.localeCompare(right.id)),
+);
+
+export function findCannedLevel(id) {
+  return cannedLevels.find((entry) => entry.id === id) ?? null;
+}
+
 export async function resolveLevelSource({ location = window.location, storage = localStorage } = {}) {
-  const source = new URLSearchParams(location.search).get("levelSource");
-  if (source !== "editor") {
-    const response = await fetch("./levels/hardening-run.json");
-    if (!response.ok) throw new Error(`level request failed with ${response.status}`);
-    return {
-      level: await response.json(),
-      displayName: "Rewind stress scenario",
-      fromEditor: false,
-    };
+  const search = new URLSearchParams(location.search);
+  if (search.get("levelSource") !== "editor") {
+    const requested = findCannedLevel(search.get("level"));
+    const selected = requested ?? cannedLevels[0];
+    if (!selected) throw new Error("No canned levels were found.");
+    return { ...selected, fromEditor: false };
   }
 
   let envelope;
@@ -36,6 +59,7 @@ export async function resolveLevelSource({ location = window.location, storage =
     throw new Error("No compatible editor playtest is available. Return to the editor and choose Playtest again.");
   }
   return {
+    id: null,
     level: envelope.level,
     displayName: envelope.displayName || "Editor playtest",
     fromEditor: true,
