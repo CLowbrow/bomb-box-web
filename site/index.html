@@ -18,6 +18,12 @@
               <span>Level</span>
               <strong id="level-name">Loading…</strong>
             </div>
+            <output
+              id="outcome"
+              class="outcome-banner"
+              data-outcome="ongoing"
+              aria-live="polite"
+            ></output>
             <div class="page-actions">
               <button class="text-button" type="button" popovertarget="how-to-play">How to play</button>
               <a href="./editor/">Editor</a>
@@ -31,7 +37,6 @@
           <div class="board-footer">
             <div class="run-status">
               <span>Turn <strong id="turn-count">0</strong></span>
-              <output id="outcome" class="outcome" data-outcome="ongoing">ongoing</output>
             </div>
             <div id="engine-status" class="engine-status" data-state="loading" role="status">
               <span class="status-light" aria-hidden="true"></span>

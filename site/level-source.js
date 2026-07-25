@@ -32,6 +32,8 @@ export const cannedLevels = Object.freeze(
     .sort((left, right) => left.id.localeCompare(right.id)),
 );
 
+export const defaultCannedLevel = cannedLevels[0] ?? null;
+
 export function findCannedLevel(id) {
   return cannedLevels.find((entry) => entry.id === id) ?? null;
 }
@@ -40,7 +42,7 @@ export async function resolveLevelSource({ location = window.location, storage =
   const search = new URLSearchParams(location.search);
   if (search.get("levelSource") !== "editor") {
     const requested = findCannedLevel(search.get("level"));
-    const selected = requested ?? cannedLevels[0];
+    const selected = requested ?? defaultCannedLevel;
     if (!selected) throw new Error("No canned levels were found.");
     return { ...selected, fromEditor: false };
   }

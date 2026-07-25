@@ -1,0 +1,268 @@
+{
+  "format": "game-rules-level",
+  "version": 1,
+  "coordinateSystem": {
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "positiveX": "east",
+    "positiveY": "north"
+  },
+  "width": 4,
+  "height": 6,
+  "cells": [
+    {
+      "coordinate": {
+        "x": 0,
+        "y": 0
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 1,
+        "y": 0
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 2,
+        "y": 0
+      },
+      "type": "ramp",
+      "lowDirection": "west",
+      "lowElevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 0
+      },
+      "type": "flat",
+      "elevation": 1
+    },
+    {
+      "coordinate": {
+        "x": 0,
+        "y": 1
+      },
+      "type": "ramp",
+      "lowDirection": "south",
+      "lowElevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 1,
+        "y": 1
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 2,
+        "y": 1
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 1
+      },
+      "type": "ramp",
+      "lowDirection": "south",
+      "lowElevation": 1
+    },
+    {
+      "coordinate": {
+        "x": 0,
+        "y": 2
+      },
+      "type": "ramp",
+      "lowDirection": "south",
+      "lowElevation": 1
+    },
+    {
+      "coordinate": {
+        "x": 1,
+        "y": 2
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 2,
+        "y": 2
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 2
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 0,
+        "y": 3
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 1,
+        "y": 3
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 2,
+        "y": 3
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 3
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 0,
+        "y": 4
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 1,
+        "y": 4
+      },
+      "type": "flat",
+      "elevation": 0
+    },
+    {
+      "coordinate": {
+        "x": 2,
+        "y": 4
+      },
+      "type": "flat",
+      "elevation": 1
+    },
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 4
+      },
+      "type": "flat",
+      "elevation": 1
+    },
+    {
+      "coordinate": {
+        "x": 0,
+        "y": 5
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 1,
+        "y": 5
+      },
+      "type": "flat",
+      "elevation": 1
+    },
+    {
+      "coordinate": {
+        "x": 2,
+        "y": 5
+      },
+      "type": "flat",
+      "elevation": 2
+    },
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 5
+      },
+      "type": "flat",
+      "elevation": 2
+    }
+  ],
+  "fixtures": [
+    {
+      "coordinate": {
+        "x": 3,
+        "y": 5
+      },
+      "type": "exit"
+    }
+  ],
+  "entities": [
+    {
+      "id": "1",
+      "type": "player",
+      "coordinate": {
+        "x": 0,
+        "y": 0
+      },
+      "bottomHalfSteps": 0
+    },
+    {
+      "id": "3",
+      "type": "box",
+      "coordinate": {
+        "x": 2,
+        "y": 2
+      },
+      "bottomHalfSteps": 4
+    },
+    {
+      "id": "2",
+      "type": "barrel",
+      "coordinate": {
+        "x": 2,
+        "y": 3
+      },
+      "bottomHalfSteps": 4
+    },
+    {
+      "id": "4",
+      "type": "box",
+      "coordinate": {
+        "x": 1,
+        "y": 4
+      },
+      "bottomHalfSteps": 0
+    },
+    {
+      "id": "5",
+      "type": "box",
+      "coordinate": {
+        "x": 1,
+        "y": 4
+      },
+      "bottomHalfSteps": 2
+    }
+  ]
+}

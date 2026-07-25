@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLevel, toLevelDefinition } from "../site/editor/domain";
 import { PLAYTEST_STORAGE_KEY } from "../site/editor/storage";
-import { cannedLevels, resolveLevelSource } from "../site/level-source.js";
+import {
+  cannedLevels,
+  defaultCannedLevel,
+  resolveLevelSource,
+} from "../site/level-source.js";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -22,8 +26,9 @@ describe("game level source", () => {
       location: new URL("https://example.test/game/") as unknown as Location,
       storage,
     });
+    expect(defaultCannedLevel).toBe(cannedLevels[0]);
     expect(source.fromEditor).toBe(false);
-    expect(source).toMatchObject(cannedLevels[0]);
+    expect(source).toMatchObject(defaultCannedLevel!);
   });
 
   it("selects a canned level from the URL", async () => {

@@ -1,4 +1,9 @@
-import { cannedLevels, findCannedLevel, resolveLevelSource } from "./level-source.js";
+import {
+  cannedLevels,
+  defaultCannedLevel,
+  findCannedLevel,
+  resolveLevelSource,
+} from "./level-source.js";
 import { createLatestMoveRunner, performCommand } from "./game/command-runner.js";
 import { TICK_DURATION_MS } from "./game/config.js";
 import { coordinateKey } from "./game/scene-model.js";
@@ -51,7 +56,11 @@ function updateControls() {
 
 function updateStatePresentation(state) {
   outcome = state.outcome;
-  outcomeElement.textContent = outcome;
+  outcomeElement.textContent = outcome === "won"
+    ? "Level complete!"
+    : outcome === "lost"
+      ? "Level failed"
+      : "";
   outcomeElement.dataset.outcome = outcome;
   turnCountElement.textContent = String(turnCount);
   updateControls();
@@ -270,7 +279,7 @@ window.addEventListener("keydown", (event) => {
 
 window.addEventListener("popstate", () => {
   const id = new URLSearchParams(window.location.search).get("level");
-  const entry = findCannedLevel(id) ?? cannedLevels[0];
+  const entry = findCannedLevel(id) ?? defaultCannedLevel;
   if (entry?.id !== currentLevelId) void switchToCannedLevel(entry, { updateHistory: false });
 });
 
@@ -278,17 +287,16 @@ updateControls();
 
 try {
   const wasmModuleUrl = new URL("./wasm/game_rules.mjs", document.baseURI).href;
-  const [{ default: createGameRulesModule }, levelSource] = await Promise.all([
-    import(/* @vite-ignore */ wasmModuleUrl),
-    resolveLevelSource(),
-  ]);
+  const gameRulesModulePromise = import(/* @vite-ignore */ wasmModuleUrl);
+  const levelSource = await resolveLevelSource();
+  setCurrentLevel(levelSource);
+  const { default: createGameRulesModule } = await gameRulesModulePromise;
   const gameModule = await createGameRulesModule({
     locateFile: (file) => new URL(`./wasm/${file}`, document.baseURI).href,
   });
   engine = gameModule.gameRules.createEngine();
   gameView = createGameView(boardElement);
   const loaded = loadLevel(levelSource.level);
-  setCurrentLevel(levelSource);
   await applyResult(loaded);
 
   setStatus("ready", "Ready");

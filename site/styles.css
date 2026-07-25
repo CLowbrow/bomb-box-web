@@ -63,7 +63,6 @@ a {
   padding: 24px;
 }
 
-.game-bar,
 .board-footer,
 .page-actions,
 .run-status,
@@ -72,9 +71,16 @@ a {
   align-items: center;
 }
 
-.game-bar,
 .board-footer {
   justify-content: space-between;
+  gap: 20px;
+}
+
+.game-bar {
+  display: grid;
+  min-height: 64px;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 360px) minmax(0, 1fr);
+  align-items: center;
   gap: 20px;
 }
 
@@ -103,6 +109,7 @@ a {
 
 .page-actions {
   flex: 0 0 auto;
+  justify-self: end;
   gap: 16px;
   font-size: 0.76rem;
 }
@@ -192,18 +199,60 @@ a {
   text-transform: uppercase;
 }
 
-.outcome {
-  color: #77736b;
+.outcome-banner {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-height: 58px;
+  max-height: 58px;
+  margin: 0 auto;
+  padding: 12px 18px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  visibility: hidden;
+  opacity: 0;
+  font-size: clamp(1.00rem, 2.6vw, 1.3rem);
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  transform: translateY(7px) scale(0.92);
 }
 
-.outcome[data-outcome="won"] {
-  color: #28723b;
-  font-weight: 800;
+.outcome-banner[data-outcome="won"],
+.outcome-banner[data-outcome="lost"] {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
-.outcome[data-outcome="lost"] {
-  color: #9b382d;
-  font-weight: 800;
+.outcome-banner[data-outcome="won"] {
+  border-color: #9ccba6;
+  color: #1f6a35;
+  background: linear-gradient(135deg, #f6fff5, #dff2df);
+  box-shadow:
+    0 7px 22px rgba(40, 114, 59, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: victory-pop 480ms cubic-bezier(0.2, 0.9, 0.25, 1.25) both;
+}
+
+.outcome-banner[data-outcome="won"]::before,
+.outcome-banner[data-outcome="won"]::after {
+  content: "✦";
+  margin: 0 10px;
+  color: #d19b2d;
+  font-size: 0.62em;
+  vertical-align: 0.16em;
+}
+
+.outcome-banner[data-outcome="lost"] {
+  border-color: #ddb0aa;
+  color: #8c3128;
+  background: #fff3f1;
 }
 
 .status-light {
@@ -452,6 +501,24 @@ a {
     padding: 16px;
   }
 
+  .game-bar {
+    min-height: 56px;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px) minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .outcome-banner {
+    min-height: 50px;
+    max-height: 50px;
+    padding: 10px 12px;
+    font-size: 1.2rem;
+  }
+
+  .outcome-banner[data-outcome="won"]::before,
+  .outcome-banner[data-outcome="won"]::after {
+    margin-inline: 5px;
+  }
+
   .board {
     height: clamp(330px, 82vw, 520px);
   }
@@ -475,16 +542,31 @@ a {
 
 @media (max-width: 480px) {
   .game-bar {
+    min-height: 108px;
+    grid-template-areas:
+      "level actions"
+      "outcome outcome";
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 50px;
     align-items: flex-start;
+    row-gap: 8px;
   }
 
   .current-level {
     display: grid;
+    grid-area: level;
     gap: 3px;
   }
 
   .page-actions {
+    grid-area: actions;
     gap: 10px;
+  }
+
+  .outcome-banner {
+    width: min(100%, 320px);
+    grid-area: outcome;
+    justify-self: center;
   }
 
   .engine-status > :last-child {
@@ -501,8 +583,28 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .outcome-banner[data-outcome="won"] {
+    animation: none;
+  }
+
   .dpad button:active,
   .secondary-control:active {
     transform: none;
+  }
+}
+
+@keyframes victory-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(7px) scale(0.84);
+  }
+
+  70% {
+    transform: translateY(0) scale(1.04);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
