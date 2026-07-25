@@ -9,6 +9,7 @@ import {
   terrainBaselineElevation,
   terrainColumnSegments,
 } from "../site/game/scene-model.js";
+import { createRampGeometry } from "../site/game/three-view.js";
 
 function world(positiveX = "east", positiveY = "north") {
   return {
@@ -62,6 +63,22 @@ describe("three-dimensional game scene mapping", () => {
     expect(rampCornerHeights("south")).toEqual([0.65, 0.65, 0, 0]);
     expect(rampCornerHeights("east")).toEqual([0.65, 0, 0, 0.65]);
     expect(rampCornerHeights("west")).toEqual([0, 0.65, 0.65, 0]);
+  });
+
+  it("keeps ramp faces faceted so side normals cannot distort the slope", () => {
+    const geometry = createRampGeometry("north");
+    const normals = geometry.getAttribute("normal");
+    const topNormals = Array.from({ length: 6 }, (_, index) => [
+      normals.getX(index),
+      normals.getY(index),
+      normals.getZ(index),
+    ]);
+
+    expect(geometry.index).toBeNull();
+    for (const normal of topNormals.slice(1)) {
+      expect(normal).toEqual(topNormals[0]);
+    }
+    geometry.dispose();
   });
 
   it("builds elevated terrain upward from a shared half-step baseline", () => {

@@ -12,7 +12,8 @@ import {
   terrainColumnSegments,
 } from "./scene-model.js";
 
-const CAMERA_ANGLE = THREE.MathUtils.degToRad(52);
+const CAMERA_ELEVATION = THREE.MathUtils.degToRad(64);
+const CAMERA_FOV = 34;
 const FIXTURE_COLORS = Object.freeze({
   red: 0xc84b3f,
   green: 0x4f9b62,
@@ -20,7 +21,7 @@ const FIXTURE_COLORS = Object.freeze({
   yellow: 0xd6a928,
 });
 
-function createRampGeometry(lowDirection) {
+export function createRampGeometry(lowDirection) {
   const half = SCENE_UNITS.floorSize / 2;
   const top = rampCornerHeights(lowDirection);
   const overlap = SCENE_UNITS.rampOverlap;
@@ -45,8 +46,10 @@ function createRampGeometry(lowDirection) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
+  const facetedGeometry = geometry.toNonIndexed();
+  geometry.dispose();
+  facetedGeometry.computeVertexNormals();
+  return facetedGeometry;
 }
 
 function disposeRecord(record) {
@@ -76,7 +79,7 @@ export function createGameView(container) {
   container.replaceChildren(renderer.domElement);
   container.setAttribute("role", "img");
 
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);
+  const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 10000);
   const terrainRoot = new THREE.Group();
   const fixtureRoot = new THREE.Group();
   const entityRoot = new THREE.Group();
@@ -133,24 +136,24 @@ export function createGameView(container) {
     renderer.setSize(width, height, false);
 
     const aspect = width / height;
-    const horizontalSpan = world.width * SCENE_UNITS.grid + 0.9;
-    const depthSpan = world.height * SCENE_UNITS.grid;
-    const verticalSpan = depthSpan * Math.sin(CAMERA_ANGLE)
-      + (maxWorldY - minWorldY) * Math.cos(CAMERA_ANGLE)
-      + 1.1;
-    const halfHeight = Math.max(verticalSpan / 2, horizontalSpan / (2 * aspect));
-    camera.left = -halfHeight * aspect;
-    camera.right = halfHeight * aspect;
-    camera.top = halfHeight;
-    camera.bottom = -halfHeight;
+    const horizontalSpan = world.width * SCENE_UNITS.grid + 1.15;
+    const depthSpan = world.height * SCENE_UNITS.grid + 1.15;
+    const elevationSpan = maxWorldY - minWorldY + 0.9;
+    const projectedHeight = depthSpan * Math.sin(CAMERA_ELEVATION)
+      + elevationSpan * Math.cos(CAMERA_ELEVATION);
+    const viewDepth = depthSpan * Math.cos(CAMERA_ELEVATION)
+      + elevationSpan * Math.sin(CAMERA_ELEVATION);
+    const halfFrame = Math.max(projectedHeight / 2, horizontalSpan / (2 * aspect));
+    const distance = halfFrame / Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV / 2))
+      + viewDepth / 2;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
 
     const targetY = (minWorldY + maxWorldY) / 2;
-    const distance = Math.max(world.width, world.height, maxWorldY - minWorldY, 4) * 3;
     camera.position.set(
       0,
-      targetY + distance * Math.sin(CAMERA_ANGLE),
-      distance * Math.cos(CAMERA_ANGLE),
+      targetY + distance * Math.sin(CAMERA_ELEVATION),
+      distance * Math.cos(CAMERA_ELEVATION),
     );
     camera.up.set(0, 1, 0);
     camera.lookAt(0, targetY, 0);

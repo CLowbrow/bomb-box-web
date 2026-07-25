@@ -34,11 +34,13 @@ test("site renders the engine's expanded board state through Three.js", async ()
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
   const app = await builtAsset("game-", ".js");
   const editor = await builtAsset("editor-", ".js");
+  const threeView = await readFile(new URL("../site/game/three-view.js", import.meta.url), "utf8");
 
   assert.match(html, /Ramp \(bidirectional\)/);
   assert.match(html, /role="img" aria-label="Loading three-dimensional game board"/);
   assert.match(app, /WebGLRenderer/);
-  assert.match(app, /OrthographicCamera/);
+  assert.match(threeView, /new THREE\.PerspectiveCamera/);
+  assert.doesNotMatch(threeView, /new THREE\.OrthographicCamera/);
   assert.match(app, /InstancedMesh/);
   assert.match(app, /levelHeight: 0\.65/);
   assert.match(app, /halfStep: 0\.325/);
