@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { performCommand } from "../site/game/command-runner.js";
+import { createLatestMoveRunner, performCommand } from "../site/game/command-runner.js";
 import { TICK_DURATION_MS, playEngineResult } from "../site/game/tick-playback.js";
 
 function dynamic(id: string, x: number, outcome = "ongoing") {
@@ -110,5 +110,45 @@ describe("engine tick presentation", () => {
     finishPresentation();
     await running;
     expect(busy).toEqual([true, false]);
+  });
+
+  it("runs only the latest move buffered during tick presentation", async () => {
+    const finishes: Array<() => void> = [];
+    const seen: string[] = [];
+    const runner = createLatestMoveRunner(async (direction) => {
+      seen.push(direction);
+      await new Promise<void>((resolve) => finishes.push(resolve));
+    });
+
+    const running = runner.request("north");
+    await vi.waitFor(() => expect(seen).toEqual(["north"]));
+    void runner.request("east");
+    void runner.request("south");
+
+    finishes.shift()!();
+    await vi.waitFor(() => expect(seen).toEqual(["north", "south"]));
+    finishes.shift()!();
+    await running;
+
+    expect(runner.isRunning()).toBe(false);
+  });
+
+  it("discards a buffered move when the first move ends the level", async () => {
+    let finish!: () => void;
+    let ongoing = true;
+    const seen: string[] = [];
+    const runner = createLatestMoveRunner(async (direction) => {
+      seen.push(direction);
+      await new Promise<void>((resolve) => { finish = resolve; });
+      ongoing = false;
+    }, { canMove: () => ongoing });
+
+    const running = runner.request("east");
+    await vi.waitFor(() => expect(seen).toEqual(["east"]));
+    void runner.request("west");
+    finish();
+    await running;
+
+    expect(seen).toEqual(["east"]);
   });
 });

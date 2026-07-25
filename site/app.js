@@ -1,5 +1,5 @@
 import { resolveLevelSource } from "./level-source.js";
-import { performCommand } from "./game/command-runner.js";
+import { createLatestMoveRunner, performCommand } from "./game/command-runner.js";
 import { coordinateKey } from "./game/scene-model.js";
 import { TICK_DURATION_MS, playEngineResult } from "./game/tick-playback.js";
 import { createGameView } from "./game/three-view.js";
@@ -33,11 +33,14 @@ let busy = true;
 let outcome = "ongoing";
 let turnCount = 0;
 let entityTypes = new Map();
+let moveRunner;
 
 function updateControls() {
   const unavailable = busy || !engine;
   for (const button of directionButtons) {
-    button.disabled = unavailable || outcome !== "ongoing";
+    button.disabled = !engine
+      || outcome !== "ongoing"
+      || (busy && !moveRunner?.isRunning());
   }
   rewindButton.disabled = unavailable;
   restartButton.disabled = unavailable;
@@ -175,6 +178,15 @@ async function runCommand(command) {
   });
 }
 
+moveRunner = createLatestMoveRunner(
+  (direction) => runCommand(() => engine.move(direction)),
+  {
+    canMove: () => Boolean(engine)
+      && outcome === "ongoing"
+      && (!busy || moveRunner.isRunning()),
+  },
+);
+
 function loadLevel() {
   const loaded = engine.loadLevel(level);
   if (loaded.status !== "loaded" || !loaded.state) {
@@ -185,7 +197,7 @@ function loadLevel() {
 }
 
 for (const button of directionButtons) {
-  button.addEventListener("click", () => void runCommand(() => engine.move(button.dataset.direction)));
+  button.addEventListener("click", () => void moveRunner.request(button.dataset.direction));
 }
 rewindButton.addEventListener("click", () => void runCommand(() => engine.rewind()));
 restartButton.addEventListener("click", () => void runCommand(() => loadLevel()));
@@ -212,7 +224,7 @@ window.addEventListener("keydown", (event) => {
   const direction = keyDirections[event.key];
   if (direction) {
     event.preventDefault();
-    void runCommand(() => engine.move(direction));
+    void moveRunner.request(direction);
     return;
   }
   if (event.key === "Backspace" || event.key.toLowerCase() === "z") {
