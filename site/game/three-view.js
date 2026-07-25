@@ -30,6 +30,15 @@ const TERRAIN_MAX_SHADE = 0.2;
 const LEDGE_EDGE_Y_OFFSET = 0.012;
 const LEDGE_HEIGHT_EPSILON = 0.000001;
 const LEDGE_LINE_WIDTH = 1.6;
+const EXIT_LABEL_BASE_Y = 0.53;
+const EXIT_LABEL_COLOR = 0xa77bf3;
+const EXIT_LABEL_DEPTH = 0.065;
+const EXIT_LABEL_FLOAT_AMPLITUDE = 0.022;
+const EXIT_LABEL_FLOAT_PERIOD_MS = 3400;
+const EXIT_LABEL_HEIGHT = 0.35;
+const EXIT_LABEL_SPACING = 0.03;
+const EXIT_LABEL_STROKE = 0.062;
+const EXIT_LABEL_WIDTH = 0.16;
 const LEDGE_EDGES = Object.freeze([
   { dx: 0, dz: -1, corners: [0, 1], neighborCorners: [3, 2] },
   { dx: 1, dz: 0, corners: [1, 2], neighborCorners: [0, 3] },
@@ -164,6 +173,78 @@ function setMaterialOpacity(material, opacity) {
 
 function stateSet(values, key = (value) => value) {
   return new Set((values ?? []).map(key));
+}
+
+function addExitLabelStroke(group, geometry, material, x, y, width, height, rotation = 0) {
+  const stroke = new THREE.Mesh(geometry, material);
+  stroke.position.set(x, y, 0);
+  stroke.rotation.z = rotation;
+  stroke.scale.set(width, height, EXIT_LABEL_DEPTH);
+  group.add(stroke);
+}
+
+function createExitLabelLetter(letter, geometry, material) {
+  const group = new THREE.Group();
+  const capY = (EXIT_LABEL_HEIGHT - EXIT_LABEL_STROKE) / 2;
+  const stemX = (-EXIT_LABEL_WIDTH + EXIT_LABEL_STROKE) / 2;
+  let strokes;
+
+  if (letter === "E") {
+    strokes = [
+      [stemX, 0, EXIT_LABEL_STROKE, EXIT_LABEL_HEIGHT],
+      ...[-capY, 0, capY].map((y) => [0, y, EXIT_LABEL_WIDTH, EXIT_LABEL_STROKE]),
+    ];
+  } else if (letter === "X") {
+    let diagonalAngle = Math.atan2(EXIT_LABEL_WIDTH, EXIT_LABEL_HEIGHT);
+    for (let index = 0; index < 6; index += 1) {
+      const centerlineWidth = EXIT_LABEL_WIDTH
+        - EXIT_LABEL_STROKE * Math.cos(diagonalAngle);
+      const centerlineHeight = EXIT_LABEL_HEIGHT
+        - EXIT_LABEL_STROKE * Math.sin(diagonalAngle);
+      diagonalAngle = Math.atan2(centerlineWidth, centerlineHeight);
+    }
+    const diagonalLength = (EXIT_LABEL_HEIGHT
+      - EXIT_LABEL_STROKE * Math.sin(diagonalAngle))
+      / Math.cos(diagonalAngle);
+    strokes = [
+      [0, 0, EXIT_LABEL_STROKE, diagonalLength, diagonalAngle],
+      [0, 0, EXIT_LABEL_STROKE, diagonalLength, -diagonalAngle],
+    ];
+  } else if (letter === "I") {
+    strokes = [
+      [0, 0, EXIT_LABEL_STROKE, EXIT_LABEL_HEIGHT],
+      ...[-capY, capY].map((y) => [0, y, EXIT_LABEL_WIDTH, EXIT_LABEL_STROKE]),
+    ];
+  } else if (letter === "T") {
+    strokes = [
+      [0, 0, EXIT_LABEL_STROKE, EXIT_LABEL_HEIGHT],
+      [0, capY, EXIT_LABEL_WIDTH, EXIT_LABEL_STROKE],
+    ];
+  }
+
+  for (const [x, y, width, height, rotation] of strokes ?? []) {
+    addExitLabelStroke(group, geometry, material, x, y, width, height, rotation);
+  }
+
+  return group;
+}
+
+export function createExitLabel(geometry, material) {
+  const label = new THREE.Group();
+  const letters = [..."EXIT"];
+  const wordWidth = letters.length * EXIT_LABEL_WIDTH
+    + (letters.length - 1) * EXIT_LABEL_SPACING;
+  let x = -wordWidth / 2 + EXIT_LABEL_WIDTH / 2;
+
+  for (const letter of letters) {
+    const letterGroup = createExitLabelLetter(letter, geometry, material);
+    letterGroup.position.x = x;
+    label.add(letterGroup);
+    x += EXIT_LABEL_WIDTH + EXIT_LABEL_SPACING;
+  }
+
+  label.position.y = EXIT_LABEL_BASE_Y;
+  return label;
 }
 
 export function addRoughTextureShader(material) {
@@ -348,6 +429,7 @@ export function createGameView(container) {
     switch: new THREE.CylinderGeometry(0.27, 0.27, 0.08, 24),
     door: new THREE.BoxGeometry(0.7, SCENE_UNITS.doorHeight, 0.7),
     exit: new THREE.TorusGeometry(0.31, 0.055, 8, 28),
+    exitLabelStroke: new THREE.BoxGeometry(1, 1, 1),
     blast: new THREE.SphereGeometry(0.34, 14, 10),
   };
   geometries.barrelBand.rotateX(Math.PI / 2);
@@ -389,6 +471,13 @@ export function createGameView(container) {
     waterAnimationFrame = 0;
     if (disposed || reducedMotion?.matches) return;
     waterMaterial.uniforms.uTime.value = time * 0.001;
+    const exitOffset = Math.sin(time * Math.PI * 2 / EXIT_LABEL_FLOAT_PERIOD_MS)
+      * EXIT_LABEL_FLOAT_AMPLITUDE;
+    for (const record of fixtureRecords) {
+      if (record.type === "exit") {
+        record.label.position.y = EXIT_LABEL_BASE_Y + exitOffset;
+      }
+    }
     render();
     waterAnimationFrame = requestAnimationFrame(animateWater);
   }
@@ -398,6 +487,9 @@ export function createGameView(container) {
       if (waterAnimationFrame) cancelAnimationFrame(waterAnimationFrame);
       waterAnimationFrame = 0;
       waterMaterial.uniforms.uTime.value = 0;
+      for (const record of fixtureRecords) {
+        if (record.type === "exit") record.label.position.y = EXIT_LABEL_BASE_Y;
+      }
       render();
     } else if (!waterAnimationFrame && !disposed) {
       waterAnimationFrame = requestAnimationFrame(animateWater);
@@ -810,16 +902,33 @@ export function createGameView(container) {
           activeColor,
         });
       } else {
-        const material = new THREE.MeshStandardMaterial({
+        const ringMaterial = new THREE.MeshStandardMaterial({
           color: 0x45a889,
           emissive: 0x176750,
           emissiveIntensity: 0.45,
           roughness: 0.4,
         });
-        const mesh = new THREE.Mesh(geometries.exit, material);
+        const labelMaterial = new THREE.MeshStandardMaterial({
+          color: EXIT_LABEL_COLOR,
+          emissive: 0x3d1c75,
+          emissiveIntensity: 0.55,
+          roughness: 0.38,
+        });
+        const mesh = new THREE.Mesh(geometries.exit, ringMaterial);
         mesh.position.y = 0.07;
-        group.add(mesh);
-        fixtureRecords.push({ type: "exit", floorY, group, materials: [material] });
+        const label = createExitLabel(geometries.exitLabelStroke, labelMaterial);
+        group.add(mesh, label);
+        fixtureRecords.push({
+          type: "exit",
+          floorY,
+          group,
+          label,
+          materials: [ringMaterial, labelMaterial],
+        });
+        terrainMax = Math.max(
+          terrainMax,
+          floorY + EXIT_LABEL_BASE_Y + EXIT_LABEL_HEIGHT / 2 + EXIT_LABEL_FLOAT_AMPLITUDE,
+        );
       }
     }
 

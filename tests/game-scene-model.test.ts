@@ -13,6 +13,7 @@ import {
 import {
   BOX_VISUAL_HEIGHT,
   addRoughTextureShader,
+  createExitLabel,
   createLedgeGeometry,
   createRampGeometry,
   createWaterMaterial,
@@ -134,6 +135,24 @@ describe("three-dimensional game scene mapping", () => {
     expect(shader.fragmentShader).toContain("roughTextureNoise");
     expect(shader.fragmentShader).toContain("roughnessFactor = clamp");
     expect(material.customProgramCacheKey()).toContain("subtle-rough-texture");
+    material.dispose();
+  });
+
+  it("keeps the raised three-dimensional exit label inside one floor tile", () => {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial();
+    const label = createExitLabel(geometry, material);
+    const bounds = new THREE.Box3().setFromObject(label);
+    const size = bounds.getSize(new THREE.Vector3());
+
+    expect(label.children).toHaveLength(4);
+    expect(size.x).toBeGreaterThan(0.7);
+    expect(size.x).toBeLessThan(SCENE_UNITS.floorSize);
+    expect(size.z).toBeLessThan(SCENE_UNITS.floorSize);
+    expect(size.y).toBeCloseTo(0.35);
+    expect(bounds.min.y).toBeGreaterThan(0.3);
+
+    geometry.dispose();
     material.dispose();
   });
 
