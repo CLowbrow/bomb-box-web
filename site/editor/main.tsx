@@ -228,16 +228,12 @@ function App() {
     }
   };
 
-  const handlePlaytest = () => {
+  const handlePlaytest = (event: MouseEvent) => {
     try {
       savePlaytest(localStorage, state.document, state.displayName);
-      const playUrl = new URL("../?levelSource=editor", document.baseURI);
-      const opened = window.open(playUrl, "_blank", "noopener");
-      dispatch({
-        type: "setNotice",
-        notice: opened ? "Opened the validated level in the game." : "The browser blocked the playtest window.",
-      });
+      dispatch({ type: "setNotice", notice: "Opened the validated level in the game." });
     } catch (error) {
+      event.preventDefault();
       dispatch({ type: "setNotice", notice: `Playtest unavailable: ${(error as Error).message}` });
     }
   };
@@ -295,7 +291,17 @@ function App() {
         <span class="command-separator" />
         <button type="button" onClick={() => setOverlay("resize")}>Resize</button>
         <button type="button" onClick={() => setOverlay("coordinates")}>Coordinates</button>
-        <button type="button" class="playtest-control" disabled={validation.status !== "valid"} onClick={handlePlaytest}>Playtest ↗</button>
+        {validation.status === "valid"
+          ? (
+            <a
+              class="playtest-control"
+              href="../?levelSource=editor"
+              onClick={handlePlaytest}
+            >
+              Playtest ↗
+            </a>
+          )
+          : <button type="button" class="playtest-control" disabled>Playtest ↗</button>}
       </nav>
 
       <section class="editor-workspace">

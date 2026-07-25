@@ -108,6 +108,9 @@ test("level editor ships as a separate multi-page application", async () => {
   assert.match(app, /bottomHalfSteps/);
   assert.match(app, /game-rules-editor:draft:v1/);
   assert.match(app, /game-rules:playtest:v1/);
+  assert.match(app, /href:\s*"\.\.\/\?levelSource=editor"/);
+  assert.doesNotMatch(app, /target:\s*"_blank"/);
+  assert.doesNotMatch(app, /window\.open/);
 });
 
 test("game bundle implements the versioned editor playtest source", async () => {

@@ -53,7 +53,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .recovery-banner button { padding: 6px 8px; border: 1px solid #7a806a; background: #f6f7ed; cursor: pointer; }
 
 .command-bar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 9px; border: 2px solid var(--ink); border-bottom: 0; background: #ebe7dd; }
-.command-bar button, .zoom-controls button { padding: 8px 10px; border: 1px solid var(--line); background: var(--paper); font-size: .68rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.command-bar button, .command-bar a, .zoom-controls button { padding: 8px 10px; border: 1px solid var(--line); background: var(--paper); font-size: .68rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.command-bar a { text-decoration: none; }
 .command-bar button:hover:not(:disabled), .zoom-controls button:hover { background: #ded8cb; }
 .command-bar button:disabled { opacity: .4; cursor: not-allowed; }
 .command-separator { width: 1px; height: 25px; flex: 0 0 auto; margin: 0 2px; background: #b2aca0; }
