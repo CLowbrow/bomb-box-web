@@ -14,12 +14,94 @@ import {
 
 const CAMERA_ELEVATION = THREE.MathUtils.degToRad(64);
 const CAMERA_FOV = 34;
+const WATER_MARGIN = 2.4;
+const WATER_FRUSTUM_OVERSCAN = 0.8;
+const WATER_DEPTH_OFFSET = 0.36;
+const WATER_WAVE_HEIGHT = 0.055;
 const FIXTURE_COLORS = Object.freeze({
   red: 0xc84b3f,
   green: 0x4f9b62,
   blue: 0x477fc2,
   yellow: 0xd6a928,
 });
+
+export function createWaterMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uSize: { value: new THREE.Vector2(1, 1) },
+      uDeepColor: { value: new THREE.Color(0x174d62) },
+      uShallowColor: { value: new THREE.Color(0x4aa5a4) },
+      uHighlightColor: { value: new THREE.Color(0xb8e1d5) },
+    },
+    vertexShader: `
+      uniform float uTime;
+      uniform vec2 uSize;
+      varying vec2 vSurfacePosition;
+      varying float vWave;
+
+      void main() {
+        vec2 surfacePosition = position.xy * uSize;
+        float broadWave = sin(surfacePosition.x * 1.18 + uTime * 0.95)
+          * cos(surfacePosition.y * 0.82 - uTime * 0.62);
+        float crossWave = sin((surfacePosition.x + surfacePosition.y) * 1.72 - uTime * 1.28);
+        float wave = (broadWave * 0.68 + crossWave * 0.32) * ${WATER_WAVE_HEIGHT.toFixed(3)};
+        vec3 displaced = position;
+        displaced.z += wave;
+        vSurfacePosition = surfacePosition;
+        vWave = wave;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec3 uDeepColor;
+      uniform vec3 uShallowColor;
+      uniform vec3 uHighlightColor;
+      varying vec2 vSurfacePosition;
+      varying float vWave;
+
+      void main() {
+        float slowRipple = sin(vSurfacePosition.x * 1.42 + uTime * 0.7)
+          + sin(vSurfacePosition.y * 1.68 - uTime * 0.58);
+        float diagonalRipple = sin((vSurfacePosition.x - vSurfacePosition.y) * 2.35 + uTime * 0.92);
+        float waterMix = 0.5 + slowRipple * 0.105 + diagonalRipple * 0.055;
+        vec3 color = mix(uDeepColor, uShallowColor, clamp(waterMix, 0.0, 1.0));
+        float crest = smoothstep(0.018, ${WATER_WAVE_HEIGHT.toFixed(3)}, vWave);
+        color = mix(color, uHighlightColor, crest * 0.42);
+        gl_FragColor = vec4(color, 0.94);
+      }
+    `,
+    transparent: true,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+  });
+}
+
+export function waterFootprintForCamera(camera, waterY) {
+  camera.updateMatrixWorld(true);
+  const waterPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -waterY);
+  const raycaster = new THREE.Raycaster();
+  const intersection = new THREE.Vector3();
+  const points = [];
+
+  for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+    if (!raycaster.ray.intersectPlane(waterPlane, intersection)) return null;
+    points.push(intersection.clone());
+  }
+
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minZ = Math.min(...points.map((point) => point.z));
+  const maxZ = Math.max(...points.map((point) => point.z));
+  return {
+    centerX: (minX + maxX) / 2,
+    centerZ: (minZ + maxZ) / 2,
+    width: maxX - minX,
+    depth: maxZ - minZ,
+  };
+}
 
 export function createRampGeometry(lowDirection) {
   const half = SCENE_UNITS.floorSize / 2;
@@ -84,7 +166,12 @@ export function createGameView(container) {
   const fixtureRoot = new THREE.Group();
   const entityRoot = new THREE.Group();
   const effectRoot = new THREE.Group();
-  scene.add(terrainRoot, fixtureRoot, entityRoot, effectRoot);
+  const waterGeometry = new THREE.PlaneGeometry(1, 1, 56, 56);
+  const waterMaterial = createWaterMaterial();
+  const water = new THREE.Mesh(waterGeometry, waterMaterial);
+  water.rotation.x = -Math.PI / 2;
+  water.visible = false;
+  scene.add(water, terrainRoot, fixtureRoot, entityRoot, effectRoot);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x777164, 2.1));
   const keyLight = new THREE.DirectionalLight(0xffffff, 3.1);
   keyLight.position.set(-6, 12, 8);
@@ -124,10 +211,49 @@ export function createGameView(container) {
   let resizeObserver;
   let minWorldY = 0;
   let maxWorldY = SCENE_UNITS.levelHeight;
+  let waterAnimationFrame = 0;
+
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 
   function render() {
     if (!disposed) renderer.render(scene, camera);
   }
+
+  function fitWaterToCamera() {
+    if (!world || !water.visible) return;
+    const footprint = waterFootprintForCamera(camera, water.position.y);
+    if (!footprint) return;
+    const minimumWidth = world.width * SCENE_UNITS.grid + WATER_MARGIN * 2;
+    const minimumDepth = world.height * SCENE_UNITS.grid + WATER_MARGIN * 2;
+    const width = Math.max(minimumWidth, footprint.width + WATER_FRUSTUM_OVERSCAN * 2);
+    const depth = Math.max(minimumDepth, footprint.depth + WATER_FRUSTUM_OVERSCAN * 2);
+    water.position.x = footprint.centerX;
+    water.position.z = footprint.centerZ;
+    water.scale.set(width, depth, 1);
+    waterMaterial.uniforms.uSize.value.set(width, depth);
+  }
+
+  function animateWater(time) {
+    waterAnimationFrame = 0;
+    if (disposed || reducedMotion?.matches) return;
+    waterMaterial.uniforms.uTime.value = time * 0.001;
+    render();
+    waterAnimationFrame = requestAnimationFrame(animateWater);
+  }
+
+  function syncWaterAnimation() {
+    if (reducedMotion?.matches) {
+      if (waterAnimationFrame) cancelAnimationFrame(waterAnimationFrame);
+      waterAnimationFrame = 0;
+      waterMaterial.uniforms.uTime.value = 0;
+      render();
+    } else if (!waterAnimationFrame && !disposed) {
+      waterAnimationFrame = requestAnimationFrame(animateWater);
+    }
+  }
+
+  reducedMotion?.addEventListener?.("change", syncWaterAnimation);
+  syncWaterAnimation();
 
   function fitCamera() {
     if (!world) return;
@@ -157,6 +283,7 @@ export function createGameView(container) {
     );
     camera.up.set(0, 1, 0);
     camera.lookAt(0, targetY, 0);
+    fitWaterToCamera();
     render();
   }
 
@@ -413,6 +540,13 @@ export function createGameView(container) {
 
     const baselineElevation = terrainBaselineElevation(fullState.cells);
     const baselineY = baselineElevation * SCENE_UNITS.levelHeight;
+    const waterWidth = fullState.width * SCENE_UNITS.grid + WATER_MARGIN * 2;
+    const waterDepth = fullState.height * SCENE_UNITS.grid + WATER_MARGIN * 2;
+    const waterY = baselineY - WATER_DEPTH_OFFSET;
+    water.position.set(0, waterY, 0);
+    water.scale.set(waterWidth, waterDepth, 1);
+    waterMaterial.uniforms.uSize.value.set(waterWidth, waterDepth);
+    water.visible = true;
     let terrainMin = baselineY;
     let terrainMax = -Infinity;
     const terrainBlocks = [];
@@ -520,7 +654,7 @@ export function createGameView(container) {
       }
     }
 
-    minWorldY = Number.isFinite(terrainMin) ? terrainMin : 0;
+    minWorldY = Math.min(Number.isFinite(terrainMin) ? terrainMin : 0, waterY - WATER_WAVE_HEIGHT);
     maxWorldY = Number.isFinite(terrainMax) ? terrainMax : SCENE_UNITS.levelHeight;
     fitCamera();
   }
@@ -539,6 +673,8 @@ export function createGameView(container) {
     if (disposed) return;
     disposed = true;
     animationGeneration += 1;
+    if (waterAnimationFrame) cancelAnimationFrame(waterAnimationFrame);
+    reducedMotion?.removeEventListener?.("change", syncWaterAnimation);
     resizeObserver?.disconnect();
     window.removeEventListener("resize", handleResize);
     clearFixtures();
@@ -547,6 +683,8 @@ export function createGameView(container) {
       effect.material?.dispose();
       effectRoot.remove(effect);
     }
+    waterGeometry.dispose();
+    waterMaterial.dispose();
     terrainMaterial.dispose();
     for (const geometry of Object.values(geometries)) geometry.dispose();
     renderer.dispose();

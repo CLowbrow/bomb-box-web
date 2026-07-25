@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
 import {
   ENTITY_HEIGHTS,
   SCENE_UNITS,
@@ -9,7 +10,11 @@ import {
   terrainBaselineElevation,
   terrainColumnSegments,
 } from "../site/game/scene-model.js";
-import { createRampGeometry } from "../site/game/three-view.js";
+import {
+  createRampGeometry,
+  createWaterMaterial,
+  waterFootprintForCamera,
+} from "../site/game/three-view.js";
 
 function world(positiveX = "east", positiveY = "north") {
   return {
@@ -79,6 +84,32 @@ describe("three-dimensional game scene mapping", () => {
       expect(normal).toEqual(topNormals[0]);
     }
     geometry.dispose();
+  });
+
+  it("uses a time-driven water shader with an accessible static state", () => {
+    const material = createWaterMaterial();
+
+    expect(material.uniforms.uTime.value).toBe(0);
+    expect(material.vertexShader).toContain("uTime");
+    expect(material.vertexShader).toContain("displaced.z += wave");
+    expect(material.fragmentShader).toContain("slowRipple");
+    expect(material.transparent).toBe(true);
+    expect(material.depthWrite).toBe(true);
+
+    material.dispose();
+  });
+
+  it("projects the camera frustum onto the water plane", () => {
+    const camera = new THREE.PerspectiveCamera(34, 2, 0.1, 1000);
+    camera.position.set(0, 10, 10);
+    camera.lookAt(0, 0, 0);
+
+    const footprint = waterFootprintForCamera(camera, 0);
+
+    expect(footprint).not.toBeNull();
+    expect(footprint.width).toBeGreaterThan(footprint.depth);
+    expect(footprint.depth).toBeGreaterThan(0);
+    expect(footprint.centerZ).toBeLessThan(0);
   });
 
   it("builds elevated terrain upward from a shared half-step baseline", () => {

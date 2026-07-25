@@ -41,6 +41,11 @@ test("site renders the engine's expanded board state through Three.js", async ()
   assert.match(app, /WebGLRenderer/);
   assert.match(threeView, /new THREE\.PerspectiveCamera/);
   assert.doesNotMatch(threeView, /new THREE\.OrthographicCamera/);
+  assert.match(threeView, /new THREE\.ShaderMaterial/);
+  assert.match(threeView, /new THREE\.PlaneGeometry\(1, 1, 56, 56\)/);
+  assert.match(threeView, /waterFootprintForCamera/);
+  assert.match(threeView, /WATER_FRUSTUM_OVERSCAN/);
+  assert.match(threeView, /prefers-reduced-motion: reduce/);
   assert.match(app, /InstancedMesh/);
   assert.match(app, /levelHeight: 0\.65/);
   assert.match(app, /halfStep: 0\.325/);

@@ -92,7 +92,8 @@ terminal exit, exact rewind, and branching after rewind. The playable board uses
 a fixed, screen-aligned orthographic Three.js view. It renders grey terrain as
 solid, subtly segmented columns from a shared half-step baseline, with oriented
 ramps, compressed-height stacks, simple player/box/barrel geometry,
-and all current fixture types. Horizontal cells use one scene unit while each
+all current fixture types, and an animated abstract water shader beneath the level. Horizontal cells use
+one scene unit while each
 logical entity or elevation level uses 0.65 scene units, preserving exact
 half-step and stack relationships without making boxes look cubic.
 
