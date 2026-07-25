@@ -11,6 +11,9 @@ import {
   terrainColumnSegments,
 } from "../site/game/scene-model.js";
 import {
+  BOX_VISUAL_HEIGHT,
+  addRoughTextureShader,
+  createLedgeGeometry,
   createRampGeometry,
   createWaterMaterial,
   waterFootprintForCamera,
@@ -25,6 +28,25 @@ function world(positiveX = "east", positiveY = "north") {
 }
 
 describe("three-dimensional game scene mapping", () => {
+  it("uses narrow horizontal seams between floor blocks", () => {
+    expect(SCENE_UNITS.grid - SCENE_UNITS.floorSize).toBeCloseTo(0.05);
+  });
+
+  it("leaves a legible vertical gap between stacked box visuals", () => {
+    expect(SCENE_UNITS.levelHeight - BOX_VISUAL_HEIGHT).toBeCloseTo(0.06);
+  });
+
+  it("outlines the outer map perimeter without outlining shared flat edges", () => {
+    const cells = [
+      { coordinate: { x: 10, y: -4 }, type: "flat", elevation: 0 },
+      { coordinate: { x: 11, y: -4 }, type: "flat", elevation: 0 },
+    ];
+    const geometry = createLedgeGeometry(cells, { ...world(), width: 2, height: 1 });
+
+    expect(geometry.getAttribute("instanceStart").count).toBe(6);
+    geometry.dispose();
+  });
+
   it("maps authored axes to screen-right east and screen-up north", () => {
     expect(coordinateToWorld({ x: 10, y: -4 }, world())).toEqual({ x: -1, z: 0.5 });
     expect(coordinateToWorld({ x: 12, y: -3 }, world())).toEqual({ x: 1, z: -0.5 });
@@ -96,6 +118,22 @@ describe("three-dimensional game scene mapping", () => {
     expect(material.transparent).toBe(true);
     expect(material.depthWrite).toBe(true);
 
+    material.dispose();
+  });
+
+  it("adds subtle procedural roughness to standard materials", () => {
+    const material = addRoughTextureShader(new THREE.MeshStandardMaterial());
+    const shader = {
+      vertexShader: "#include <common>\n#include <project_vertex>",
+      fragmentShader: "#include <common>\n#include <roughnessmap_fragment>",
+    };
+
+    material.onBeforeCompile(shader, null);
+
+    expect(shader.vertexShader).toContain("vRoughTexturePosition = position");
+    expect(shader.fragmentShader).toContain("roughTextureNoise");
+    expect(shader.fragmentShader).toContain("roughnessFactor = clamp");
+    expect(material.customProgramCacheKey()).toContain("subtle-rough-texture");
     material.dispose();
   });
 

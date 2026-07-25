@@ -2,7 +2,7 @@ export const SCENE_UNITS = Object.freeze({
   grid: 1,
   levelHeight: 0.65,
   halfStep: 0.325,
-  floorSize: 0.92,
+  floorSize: 0.95,
   floorGap: 0.025,
   rampOverlap: 0.018,
   boxSize: 0.74,

@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { TICK_DURATION_MS } from "./config.js";
 import {
   SCENE_UNITS,
@@ -19,6 +22,20 @@ const WATER_MARGIN = 2.4;
 const WATER_FRUSTUM_OVERSCAN = 0.8;
 const WATER_DEPTH_OFFSET = 0.36;
 const WATER_WAVE_HEIGHT = 0.055;
+export const BOX_VISUAL_HEIGHT = SCENE_UNITS.levelHeight - 0.06;
+const ROUGH_TEXTURE_SCALE = 17;
+const ROUGH_TEXTURE_STRENGTH = 0.08;
+const TERRAIN_SHADE_PER_LEVEL = 0.08;
+const TERRAIN_MAX_SHADE = 0.2;
+const LEDGE_EDGE_Y_OFFSET = 0.012;
+const LEDGE_HEIGHT_EPSILON = 0.000001;
+const LEDGE_LINE_WIDTH = 1.6;
+const LEDGE_EDGES = Object.freeze([
+  { dx: 0, dz: -1, corners: [0, 1], neighborCorners: [3, 2] },
+  { dx: 1, dz: 0, corners: [1, 2], neighborCorners: [0, 3] },
+  { dx: 0, dz: 1, corners: [3, 2], neighborCorners: [0, 1] },
+  { dx: -1, dz: 0, corners: [0, 3], neighborCorners: [1, 2] },
+]);
 const FIXTURE_COLORS = Object.freeze({
   red: 0xc84b3f,
   green: 0x4f9b62,
@@ -149,6 +166,132 @@ function stateSet(values, key = (value) => value) {
   return new Set((values ?? []).map(key));
 }
 
+export function addRoughTextureShader(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+        varying vec3 vRoughTexturePosition;`,
+      )
+      .replace(
+        "#include <project_vertex>",
+        `vRoughTexturePosition = position;
+        #include <project_vertex>`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+        varying vec3 vRoughTexturePosition;
+
+        float roughTextureNoise(vec3 point) {
+          vec3 cell = floor(point);
+          vec3 blend = fract(point);
+          blend = blend * blend * (3.0 - 2.0 * blend);
+          vec3 stepVector = vec3(1.0, 57.0, 113.0);
+          float base = dot(cell, stepVector);
+          vec4 lower = fract(sin(base + vec4(0.0, 1.0, 57.0, 58.0)) * 43758.5453);
+          vec4 upper = fract(sin(base + vec4(113.0, 114.0, 170.0, 171.0)) * 43758.5453);
+          vec4 mixedZ = mix(lower, upper, blend.z);
+          vec2 mixedY = mix(mixedZ.xy, mixedZ.zw, blend.y);
+          return mix(mixedY.x, mixedY.y, blend.x);
+        }`,
+      )
+      .replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
+        float roughTexture = roughTextureNoise(vRoughTexturePosition * ${ROUGH_TEXTURE_SCALE.toFixed(1)});
+        roughnessFactor = clamp(
+          roughnessFactor + (roughTexture - 0.5) * ${ROUGH_TEXTURE_STRENGTH.toFixed(2)},
+          0.0,
+          1.0
+        );
+        diffuseColor.rgb *= 0.985 + roughTexture * 0.03;`,
+      );
+  };
+  material.customProgramCacheKey = () => "subtle-rough-texture-v1";
+  return material;
+}
+
+function terrainSurfaceElevation(cell) {
+  return cell.type === "ramp" ? cell.lowElevation + 0.5 : cell.elevation;
+}
+
+function terrainShade(elevation, lowestElevation) {
+  const darkness = THREE.MathUtils.clamp(
+    (elevation - lowestElevation) * TERRAIN_SHADE_PER_LEVEL,
+    0,
+    TERRAIN_MAX_SHADE,
+  );
+  return new THREE.Color().setRGB(1 - darkness, 1 - darkness, 1 - darkness);
+}
+
+function cellCornerWorldHeights(cell) {
+  if (cell.type !== "ramp") {
+    const height = cell.elevation * SCENE_UNITS.levelHeight;
+    return [height, height, height, height];
+  }
+  const lowY = cell.lowElevation * SCENE_UNITS.levelHeight;
+  return rampCornerHeights(cell.lowDirection).map((height) => lowY + height);
+}
+
+export function createLedgeGeometry(cells, fullState) {
+  const half = SCENE_UNITS.floorSize / 2;
+  const maxWorldX = (fullState.width - 1) / 2;
+  const maxWorldZ = (fullState.height - 1) / 2;
+  const byWorldPosition = new Map(cells.map((cell) => {
+    const position = coordinateToWorld(cell.coordinate, fullState);
+    return [`${position.x},${position.z}`, { cell, position }];
+  }));
+  const positions = [];
+
+  for (const { cell, position } of byWorldPosition.values()) {
+    const heights = cellCornerWorldHeights(cell);
+    for (const edge of LEDGE_EDGES) {
+      const y1 = heights[edge.corners[0]];
+      const y2 = heights[edge.corners[1]];
+      const neighborX = position.x + edge.dx;
+      const neighborZ = position.z + edge.dz;
+      const neighbor = byWorldPosition.get(`${neighborX},${neighborZ}`);
+      const outsideMap = Math.abs(neighborX) > maxWorldX + LEDGE_HEIGHT_EPSILON
+        || Math.abs(neighborZ) > maxWorldZ + LEDGE_HEIGHT_EPSILON;
+      if (!neighbor && !outsideMap) continue;
+
+      const x1 = position.x + (edge.dx === 0 ? -half : edge.dx * half);
+      const z1 = position.z + (edge.dz === 0 ? -half : edge.dz * half);
+      const x2 = position.x + (edge.dx === 0 ? half : edge.dx * half);
+      const z2 = position.z + (edge.dz === 0 ? half : edge.dz * half);
+      let start = 0;
+      let end = 1;
+      if (neighbor) {
+        const neighborHeights = cellCornerWorldHeights(neighbor.cell);
+        const difference1 = y1 - neighborHeights[edge.neighborCorners[0]];
+        const difference2 = y2 - neighborHeights[edge.neighborCorners[1]];
+        if (difference1 <= LEDGE_HEIGHT_EPSILON && difference2 <= LEDGE_HEIGHT_EPSILON) continue;
+        if (difference1 <= LEDGE_HEIGHT_EPSILON || difference2 <= LEDGE_HEIGHT_EPSILON) {
+          const crossing = difference1 / (difference1 - difference2);
+          if (difference1 <= LEDGE_HEIGHT_EPSILON) start = crossing;
+          if (difference2 <= LEDGE_HEIGHT_EPSILON) end = crossing;
+        }
+      }
+      positions.push(
+        THREE.MathUtils.lerp(x1, x2, start),
+        THREE.MathUtils.lerp(y1, y2, start) + LEDGE_EDGE_Y_OFFSET,
+        THREE.MathUtils.lerp(z1, z2, start),
+        THREE.MathUtils.lerp(x1, x2, end),
+        THREE.MathUtils.lerp(y1, y2, end) + LEDGE_EDGE_Y_OFFSET,
+        THREE.MathUtils.lerp(z1, z2, end),
+      );
+    }
+  }
+
+  if (!positions.length) return null;
+  const geometry = new LineSegmentsGeometry();
+  geometry.setPositions(positions);
+  return geometry;
+}
+
 export function createGameView(container) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xdedbd2);
@@ -179,13 +322,20 @@ export function createGameView(container) {
   scene.add(keyLight);
 
   const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x8f9290, roughness: 0.88 });
+  const ledgeMaterial = new LineMaterial({
+    color: 0x252a29,
+    linewidth: LEDGE_LINE_WIDTH,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+  });
   const geometries = {
     terrainBlock: new THREE.BoxGeometry(SCENE_UNITS.floorSize, 1, SCENE_UNITS.floorSize),
     north: createRampGeometry("north"),
     east: createRampGeometry("east"),
     south: createRampGeometry("south"),
     west: createRampGeometry("west"),
-    box: new THREE.BoxGeometry(SCENE_UNITS.boxSize, SCENE_UNITS.levelHeight, SCENE_UNITS.boxSize),
+    box: new THREE.BoxGeometry(SCENE_UNITS.boxSize, BOX_VISUAL_HEIGHT, SCENE_UNITS.boxSize),
     barrel: new THREE.CylinderGeometry(
       SCENE_UNITS.barrelDiameter / 2,
       SCENE_UNITS.barrelDiameter / 2,
@@ -213,6 +363,7 @@ export function createGameView(container) {
   let minWorldY = 0;
   let maxWorldY = SCENE_UNITS.levelHeight;
   let waterAnimationFrame = 0;
+  let ledgeGeometry = null;
 
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 
@@ -310,13 +461,17 @@ export function createGameView(container) {
     let bandMaterial = null;
 
     if (entity.type === "box") {
-      const material = new THREE.MeshStandardMaterial({ color: 0x8a582f, roughness: 0.82 });
+      const material = addRoughTextureShader(
+        new THREE.MeshStandardMaterial({ color: 0x8a582f, roughness: 0.82 }),
+      );
       const mesh = new THREE.Mesh(geometries.box, material);
       mesh.position.y = SCENE_UNITS.levelHeight / 2;
       group.add(mesh);
       materials.push(material);
     } else if (entity.type === "barrel") {
-      const material = new THREE.MeshStandardMaterial({ color: 0xc53f35, roughness: 0.68 });
+      const material = addRoughTextureShader(
+        new THREE.MeshStandardMaterial({ color: 0xc53f35, roughness: 0.68 }),
+      );
       const mesh = new THREE.Mesh(geometries.barrel, material);
       mesh.position.y = SCENE_UNITS.levelHeight / 2;
       group.add(mesh);
@@ -536,6 +691,8 @@ export function createGameView(container) {
     world = fullState;
     currentState = null;
     terrainRoot.clear();
+    ledgeGeometry?.dispose();
+    ledgeGeometry = null;
     clearFixtures();
     clearEntities();
 
@@ -550,12 +707,16 @@ export function createGameView(container) {
     water.visible = true;
     let terrainMin = baselineY;
     let terrainMax = -Infinity;
+    const lowestSurfaceElevation = Math.min(
+      ...fullState.cells.map(terrainSurfaceElevation),
+    );
     const terrainBlocks = [];
     for (const cell of fullState.cells) {
       const surfaceElevation = cell.type === "ramp" ? cell.lowElevation : cell.elevation;
+      const shadeElevation = terrainSurfaceElevation(cell);
       const position = coordinateToWorld(cell.coordinate, fullState);
       for (const segment of terrainColumnSegments(surfaceElevation, baselineElevation)) {
-        terrainBlocks.push({ position, ...segment });
+        terrainBlocks.push({ position, shadeElevation, ...segment });
       }
       terrainMax = Math.max(
         terrainMax,
@@ -580,8 +741,10 @@ export function createGameView(container) {
         scale.set(1, height, 1);
         matrix.compose(position, rotation, scale);
         blocks.setMatrixAt(index, matrix);
+        blocks.setColorAt(index, terrainShade(block.shadeElevation, lowestSurfaceElevation));
       });
       blocks.instanceMatrix.needsUpdate = true;
+      blocks.instanceColor.needsUpdate = true;
       terrainRoot.add(blocks);
     }
 
@@ -597,10 +760,15 @@ export function createGameView(container) {
         const lowY = cell.lowElevation * SCENE_UNITS.levelHeight;
         matrix.makeTranslation(position.x, lowY, position.z);
         ramps.setMatrixAt(index, matrix);
+        ramps.setColorAt(index, terrainShade(terrainSurfaceElevation(cell), lowestSurfaceElevation));
       });
       ramps.instanceMatrix.needsUpdate = true;
+      ramps.instanceColor.needsUpdate = true;
       terrainRoot.add(ramps);
     }
+
+    ledgeGeometry = createLedgeGeometry(fullState.cells, fullState);
+    if (ledgeGeometry) terrainRoot.add(new LineSegments2(ledgeGeometry, ledgeMaterial));
 
     const cells = new Map(fullState.cells.map((cell) => [coordinateKey(cell.coordinate), cell]));
     for (const fixture of fullState.fixtures) {
@@ -686,6 +854,8 @@ export function createGameView(container) {
     }
     waterGeometry.dispose();
     waterMaterial.dispose();
+    ledgeGeometry?.dispose();
+    ledgeMaterial.dispose();
     terrainMaterial.dispose();
     for (const geometry of Object.values(geometries)) geometry.dispose();
     renderer.dispose();
