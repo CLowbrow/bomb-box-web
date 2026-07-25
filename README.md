@@ -104,10 +104,11 @@ half-step and stack relationships without making boxes look cubic.
 
 Each accepted command still resolves atomically in the rules engine. The
 browser presents the returned authoritative tick snapshots in order, animating
-ID-matched movement, fixture changes, arming, and explosions for 500
+ID-matched movement, fixture changes, arming, and explosions for 250
 milliseconds per tick before enabling player input again. Rewind is shown as
 one equivalent transition, and reduced-motion preferences skip animation
-timing.
+timing. To tune the pace, change `TICK_DURATION_MS` in
+`site/game/config.js`; lower values make every presented tick faster.
 
 Arrow keys, WASD, and the on-screen controls submit authoritative moves;
 Backspace, Z, and the Rewind button use the engine's resolved-state history.

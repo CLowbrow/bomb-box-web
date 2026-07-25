@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLatestMoveRunner, performCommand } from "../site/game/command-runner.js";
-import { TICK_DURATION_MS, playEngineResult } from "../site/game/tick-playback.js";
+import { TICK_DURATION_MS } from "../site/game/config.js";
+import { playEngineResult } from "../site/game/tick-playback.js";
 
 function dynamic(id: string, x: number, outcome = "ongoing") {
   return {
@@ -36,6 +37,10 @@ function fakeView() {
 }
 
 describe("engine tick presentation", () => {
+  it("uses the configured 250ms tick duration", () => {
+    expect(TICK_DURATION_MS).toBe(250);
+  });
+
   it("plays every authoritative tick sequentially at the configured duration", async () => {
     const view = fakeView();
     const states = [dynamic("1", 1), dynamic("1", 2, "won")];

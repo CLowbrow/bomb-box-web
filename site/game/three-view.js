@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { TICK_DURATION_MS } from "./config.js";
 import {
   SCENE_UNITS,
   cellSurfaceRange,
@@ -455,7 +456,7 @@ export function createGameView(container) {
     return effects;
   }
 
-  async function animateTo(nextState, events = [], durationMs = 500) {
+  async function animateTo(nextState, events = [], durationMs = TICK_DURATION_MS) {
     if (!currentState || durationMs <= 0 || disposed) {
       show(nextState);
       return;

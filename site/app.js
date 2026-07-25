@@ -1,7 +1,8 @@
 import { cannedLevels, findCannedLevel, resolveLevelSource } from "./level-source.js";
 import { createLatestMoveRunner, performCommand } from "./game/command-runner.js";
+import { TICK_DURATION_MS } from "./game/config.js";
 import { coordinateKey } from "./game/scene-model.js";
-import { TICK_DURATION_MS, playEngineResult } from "./game/tick-playback.js";
+import { playEngineResult } from "./game/tick-playback.js";
 import { createGameView } from "./game/three-view.js";
 
 const statusElement = document.querySelector("#engine-status");

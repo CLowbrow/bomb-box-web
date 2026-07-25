@@ -1,6 +1,5 @@
+import { TICK_DURATION_MS } from "./config.js";
 import { dynamicStateFromFull } from "./scene-model.js";
-
-export const TICK_DURATION_MS = 500;
 
 export async function playEngineResult(result, view, {
   durationMs = TICK_DURATION_MS,
