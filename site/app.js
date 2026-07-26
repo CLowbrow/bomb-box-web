@@ -274,6 +274,11 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Backspace" || event.key.toLowerCase() === "z") {
     event.preventDefault();
     void runCommand(() => engine.rewind());
+    return;
+  }
+  if (event.key.toLowerCase() === "r") {
+    event.preventDefault();
+    void runCommand(() => loadLevel());
   }
 });
 

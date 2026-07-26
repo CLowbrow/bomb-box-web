@@ -111,7 +111,8 @@ timing. To tune the pace, change `TICK_DURATION_MS` in
 `site/game/config.js`; lower values make every presented tick faster.
 
 Arrow keys, WASD, and the on-screen controls submit authoritative moves;
-Backspace, Z, and the Rewind button use the engine's resolved-state history.
+Backspace, Z, and the Rewind button use the engine's resolved-state history. R and the Restart
+button reload the current level.
 Restart reloads the authored level and clears history. Each turn logs the semantic events and
 derived ticks returned by the engine in the browser console rather than reconstructing rules state
 in the interface.
