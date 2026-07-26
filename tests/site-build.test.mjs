@@ -105,6 +105,10 @@ test("minimal game surface includes recovery, JSON-backed levels, and console tu
   assert.match(html, /id="level-list"/);
   assert.match(
     html,
+    /href="https:\/\/github\.com\/CLowbrow\/bomb-box-web"[^>]*>View source on GitHub<\/a>/,
+  );
+  assert.match(
+    html,
     /class="current-level"[\s\S]*id="outcome"[\s\S]*class="page-actions"/,
     "the outcome banner should sit between the header elements",
   );

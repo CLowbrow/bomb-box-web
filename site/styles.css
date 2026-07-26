@@ -58,6 +58,28 @@ a {
   box-shadow: 0 12px 32px rgba(37, 37, 33, 0.07);
 }
 
+.site-footer {
+  margin-top: 18px;
+  color: #969188;
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.site-footer a {
+  text-decoration-color: #c4c0b7;
+  text-underline-offset: 3px;
+}
+
+.site-footer a:hover {
+  color: #625f58;
+  text-decoration-color: currentColor;
+}
+
+.site-footer a:focus-visible {
+  outline: 2px solid #df6849;
+  outline-offset: 3px;
+}
+
 .board-panel {
   min-width: 0;
   padding: 24px;
