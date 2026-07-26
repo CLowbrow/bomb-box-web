@@ -1,118 +1,54 @@
-# Bomb Box web host and level editor
+# Bomb Box
 
-This repository builds a deliberately low-fi, playable browser host and a separate precision level
-editor for the puzzle game's C++ rules engine. The finished static output, including the generated
-WebAssembly module, is written under `dist/`.
+Bomb Box is a small turn-based puzzle game about pushing boxes, dropping explosive barrels, opening
+color-coded doors, and finding the exit. This repository contains the browser game and its level
+editor; the C++ rules engine lives in the `bomb-box-state` submodule and is compiled to WebAssembly.
 
-The game title is temporary. Technical names intentionally follow the
-title-independent `game_rules` naming used by the engine submodule.
+The name is still temporary, so internal engine APIs use the title-independent `game_rules` name.
 
-## Requirements
+## Run it locally
 
-- Node.js 22.12 or newer
-- CMake 3.25 or newer
-- Ninja
-- Emscripten available through `emcmake`
-- the `bomb-box-state` Git submodule initialized
-
-Install the locked web dependencies once:
-
-```sh
-npm ci
-```
-
-After cloning, initialize the submodule once:
+You will need Node.js 22.12+, CMake 3.25+, Ninja, and Emscripten (`emcmake`). Then:
 
 ```sh
 git submodule update --init --recursive
-```
-
-## Build and run
-
-Generate the complete static site:
-
-```sh
-npm run build
-```
-
-Serve the generated files locally at `http://localhost:4173`:
-
-```sh
-npm run serve
-```
-
-Or build and serve in one command:
-
-```sh
+npm ci
 npm start
 ```
 
-Run the engine's complete WebAssembly contract corpus and verify the static output:
+Open <http://localhost:4173> to play or <http://localhost:4173/editor/> to create a level. The
+editor validates levels with the same rules engine used by the game and can hand a valid draft
+directly to the game for playtesting. Use the arrow keys or WASD to move, Backspace or Z to rewind,
+and R to restart.
 
-```sh
-npm test
-```
+Useful commands:
 
-The build configures the submodule's `wasm-debug` preset, builds `game_rules_wasm`, then uses Vite
-to produce the game and editor pages. The output remains ordinary static files with repository-path
-safe relative asset URLs.
+- `npm run build` — build the WebAssembly engine and static site into `dist/`
+- `npm run serve` — serve the existing `dist/` directory
+- `npm run dev` — build the engine, then start Vite for web development
+- `npm test` — build everything and run unit, engine-contract, and site tests
+- `npm run clean` — remove generated build output
 
-## Level editor
+## How it fits together
 
-Open `http://localhost:4173/editor/` after building and serving. The editor supports complete
-version 1 grids up to 64×64, flat and ramp terrain, exact entity half-step heights, stacks, every
-entity and fixture type, colored doors and switches, multiple exits, cell-bundle copy/paste,
-undo/redo, device-local autosave, JSON import/export, and authoritative WebAssembly validation.
+The browser sends moves to the rules engine and renders the authoritative states it returns. Game
+rules are not reimplemented in the UI. The editor follows the same boundary: it owns the authoring
+experience, while the engine owns level decoding and validation.
 
-Playtest is deliberately external to the editor: it stores the latest validated level in a
-versioned same-origin handoff and opens the normal game page. See
-[`docs/level-editor-development.md`](docs/level-editor-development.md) for the architecture and
-interaction contract.
+- `site/app.js` and `site/game/` contain the playable host and Three.js presentation.
+- `site/editor/` contains the Preact level editor.
+- `site/levels/canned/` contains the levels shown in the game, ordered by filename.
+- `bomb-box-state/` is the engine submodule and WebAssembly adapter.
+- `tests/` covers browser behavior and the generated site.
+- `docs/level-editor-development.md` describes the editor's data and interaction contracts.
+- `scripts/` and `vite.config.ts` define the build; `dist/` is generated output.
 
-## GitHub Pages
+To add a playable level, put a version 1 JSON file in `site/levels/canned/`. Its numeric prefix sets
+its position in the picker and is omitted from the displayed name—for example,
+`03-chain-reaction.json` becomes “Chain Reaction.”
 
-The workflow in `.github/workflows/pages.yml` builds and publishes `dist/` on
-every push to `main`, and can also be run manually. In the GitHub repository,
-select **Settings → Pages → Build and deployment → Source: GitHub Actions** once.
+## Deployment
 
-If `bomb-box-state` is private, add a repository secret named
-`SUBMODULE_TOKEN` containing a fine-grained token with read access to that
-repository. Public submodules need no additional secret.
-
-All browser asset paths are relative, so the output works both at a custom
-domain and under a repository path such as `https://example.github.io/repo/`.
-
-## Playable level
-
-The page loads the real WebAssembly engine and offers a compact set of starter levels. The level
-links are populated automatically from version 1 JSON files in `site/levels/canned/`, sorted by
-filename. The numeric filename prefix controls order and is omitted from the displayed name, so
-`03-door-signal.json` appears as “Door Signal.” Add, remove, rename, or replace files in that folder
-to change the picker without editing the UI.
-
-The separate `site/levels/hardening-run.json` fixture preserves the original thirteen-turn engine
-coverage for automated verification. Its route exercises pushing, falling, barrel arming and
-chained explosions, a color switch and door, walking on a box above a lowered floor, a second box
-push, two-step ramp traversal, a terminal exit, exact rewind, and branching after rewind. The
-playable board renders grey terrain as
-solid, subtly segmented columns from a shared half-step baseline, with oriented
-ramps, compressed-height stacks, simple player/box/barrel geometry,
-all current fixture types, and an animated abstract water shader beneath the level. Horizontal cells use
-one scene unit while each
-logical entity or elevation level uses 0.65 scene units, preserving exact
-half-step and stack relationships without making boxes look cubic.
-
-Each accepted command still resolves atomically in the rules engine. The
-browser presents the returned authoritative tick snapshots in order, animating
-ID-matched movement, fixture changes, arming, and explosions for 250
-milliseconds per tick before enabling player input again. Rewind is shown as
-one equivalent transition, and reduced-motion preferences skip animation
-timing. To tune the pace, change `TICK_DURATION_MS` in
-`site/game/config.js`; lower values make every presented tick faster.
-
-Arrow keys, WASD, and the on-screen controls submit authoritative moves;
-Backspace, Z, and the Rewind button use the engine's resolved-state history. R and the Restart
-button reload the current level.
-Restart reloads the authored level and clears history. Each turn logs the semantic events and
-derived ticks returned by the engine in the browser console rather than reconstructing rules state
-in the interface.
+`.github/workflows/pages.yml` builds and publishes `dist/` to GitHub Pages on pushes to `main` (or
+when run manually). Configure Pages to use **GitHub Actions**. If the engine submodule is private,
+add a `SUBMODULE_TOKEN` repository secret with read access to it.
