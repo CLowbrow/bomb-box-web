@@ -17,7 +17,8 @@ import {
 } from "./scene-model.js";
 
 const CAMERA_ELEVATION = THREE.MathUtils.degToRad(64);
-const CAMERA_FOV = 34;
+const CAMERA_FRAMING_FOV = 34;
+const CAMERA_FOCAL_LENGTH = 60;
 const WATER_MARGIN = 2.4;
 const WATER_FRUSTUM_OVERSCAN = 0.8;
 const WATER_DEPTH_OFFSET = 0.36;
@@ -451,7 +452,8 @@ export function createGameView(container) {
   container.replaceChildren(renderer.domElement);
   container.setAttribute("role", "img");
 
-  const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 10000);
+  const camera = new THREE.PerspectiveCamera(CAMERA_FRAMING_FOV, 1, 0.1, 10000);
+  camera.setFocalLength(CAMERA_FOCAL_LENGTH);
   const terrainRoot = new THREE.Group();
   const fixtureRoot = new THREE.Group();
   const entityRoot = new THREE.Group();
@@ -611,7 +613,7 @@ export function createGameView(container) {
     const viewDepth = depthSpan * Math.cos(CAMERA_ELEVATION)
       + elevationSpan * Math.sin(CAMERA_ELEVATION);
     const halfFrame = Math.max(projectedHeight / 2, horizontalSpan / (2 * aspect));
-    const distance = halfFrame / Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV / 2))
+    const distance = halfFrame / Math.tan(THREE.MathUtils.degToRad(CAMERA_FRAMING_FOV / 2))
       + viewDepth / 2;
     camera.aspect = aspect;
     camera.updateProjectionMatrix();

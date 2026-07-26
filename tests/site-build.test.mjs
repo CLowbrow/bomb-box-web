@@ -52,6 +52,7 @@ test("site renders the engine's expanded board state through Three.js", async ()
   );
   assert.match(app, /WebGLRenderer/);
   assert.match(threeView, /new THREE\.PerspectiveCamera/);
+  assert.match(threeView, /camera\.setFocalLength\(CAMERA_FOCAL_LENGTH\)/);
   assert.doesNotMatch(threeView, /new THREE\.OrthographicCamera/);
   assert.match(threeView, /new THREE\.ShaderMaterial/);
   assert.match(threeView, /new THREE\.PlaneGeometry\(1, 1, 56, 56\)/);
