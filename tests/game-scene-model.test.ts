@@ -12,13 +12,16 @@ import {
 } from "../site/game/scene-model.js";
 import {
   BOX_VISUAL_HEIGHT,
+  EXPLOSION_FIRE_DURATION_MS,
   addRoughTextureShader,
+  createExplosionFireMaterial,
   createExitLabel,
   createLedgeGeometry,
   createRampGeometry,
   createWaterMaterial,
   waterFootprintForCamera,
 } from "../site/game/three-view.js";
+import { TICK_DURATION_MS } from "../site/game/config.js";
 
 function world(positiveX = "east", positiveY = "north") {
   return {
@@ -118,6 +121,23 @@ describe("three-dimensional game scene mapping", () => {
     expect(material.fragmentShader).toContain("slowRipple");
     expect(material.transparent).toBe(true);
     expect(material.depthWrite).toBe(true);
+
+    material.dispose();
+  });
+
+  it("uses a fiery expanding blast shader for 1.3 ticks", () => {
+    const material = createExplosionFireMaterial();
+
+    expect(EXPLOSION_FIRE_DURATION_MS).toBe(TICK_DURATION_MS * 1.3);
+    expect(material.uniforms.uProgress.value).toBe(0);
+    expect(material.uniforms.uOpacity.value).toBeCloseTo(0.92);
+    expect(material.vertexShader).toContain("fireNoise");
+    expect(material.vertexShader).toContain("vec3 displaced");
+    expect(material.fragmentShader).toContain("uHotColor");
+    expect(material.fragmentShader).toContain("uEmberColor");
+    expect(material.transparent).toBe(true);
+    expect(material.depthWrite).toBe(false);
+    expect(material.blending).toBe(THREE.AdditiveBlending);
 
     material.dispose();
   });

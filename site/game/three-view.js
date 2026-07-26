@@ -39,6 +39,7 @@ const EXIT_LABEL_HEIGHT = 0.35;
 const EXIT_LABEL_SPACING = 0.03;
 const EXIT_LABEL_STROKE = 0.062;
 const EXIT_LABEL_WIDTH = 0.16;
+export const EXPLOSION_FIRE_DURATION_MS = TICK_DURATION_MS * 1.3;
 const LEDGE_EDGES = Object.freeze([
   { dx: 0, dz: -1, corners: [0, 1], neighborCorners: [3, 2] },
   { dx: 1, dz: 0, corners: [1, 2], neighborCorners: [0, 3] },
@@ -101,6 +102,70 @@ export function createWaterMaterial() {
     `,
     transparent: true,
     depthWrite: true,
+    side: THREE.DoubleSide,
+  });
+}
+
+export function createExplosionFireMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uProgress: { value: 0 },
+      uTime: { value: 0 },
+      uOpacity: { value: 0.92 },
+      uHotColor: { value: new THREE.Color(0xfff4a3) },
+      uFlameColor: { value: new THREE.Color(0xff7a18) },
+      uEmberColor: { value: new THREE.Color(0xb91d09) },
+    },
+    vertexShader: `
+      uniform float uProgress;
+      uniform float uTime;
+      varying float vFlame;
+      varying vec3 vViewNormal;
+      varying vec3 vViewDirection;
+
+      float fireNoise(vec3 point) {
+        float broad = sin(point.x * 5.3 + uTime * 17.0)
+          * sin(point.y * 6.1 - uTime * 13.0)
+          * sin(point.z * 5.7 + uTime * 11.0);
+        float detail = sin((point.x + point.y - point.z) * 11.0 - uTime * 23.0);
+        return broad * 0.68 + detail * 0.32;
+      }
+
+      void main() {
+        float flame = fireNoise(normalize(position));
+        vec3 displaced = position + normal * flame * (0.035 + uProgress * 0.075);
+        vec4 viewPosition = modelViewMatrix * vec4(displaced, 1.0);
+        vFlame = flame;
+        vViewNormal = normalize(normalMatrix * normal);
+        vViewDirection = normalize(-viewPosition.xyz);
+        gl_Position = projectionMatrix * viewPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform float uProgress;
+      uniform float uOpacity;
+      uniform vec3 uHotColor;
+      uniform vec3 uFlameColor;
+      uniform vec3 uEmberColor;
+      varying float vFlame;
+      varying vec3 vViewNormal;
+      varying vec3 vViewDirection;
+
+      void main() {
+        float facing = max(dot(vViewNormal, vViewDirection), 0.0);
+        float rim = pow(1.0 - facing, 1.7);
+        float flame = smoothstep(-0.75, 0.8, vFlame);
+        float cooling = smoothstep(0.1, 0.9, uProgress);
+        vec3 hot = mix(uHotColor, uFlameColor, flame * 0.72 + cooling * 0.28);
+        vec3 color = mix(hot, uEmberColor, cooling * (0.25 + flame * 0.55));
+        color += uFlameColor * rim * (0.42 + flame * 0.3);
+        float alpha = uOpacity * min(1.0, 0.48 + rim * 0.58 + flame * 0.2);
+        gl_FragColor = vec4(color, alpha);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
   });
 }
@@ -431,6 +496,7 @@ export function createGameView(container) {
     exit: new THREE.TorusGeometry(0.31, 0.055, 8, 28),
     exitLabelStroke: new THREE.BoxGeometry(1, 1, 1),
     blast: new THREE.SphereGeometry(0.34, 14, 10),
+    explosionFire: new THREE.SphereGeometry(0.34, 24, 18),
   };
   geometries.barrelBand.rotateX(Math.PI / 2);
   geometries.exit.rotateX(Math.PI / 2);
@@ -446,11 +512,40 @@ export function createGameView(container) {
   let maxWorldY = SCENE_UNITS.levelHeight;
   let waterAnimationFrame = 0;
   let ledgeGeometry = null;
+  const activeFireEffects = new Set();
 
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 
   function render() {
     if (!disposed) renderer.render(scene, camera);
+  }
+
+  function removeFireEffect(effect) {
+    effectRoot.remove(effect.mesh);
+    effect.material.dispose();
+    activeFireEffects.delete(effect);
+  }
+
+  function clearFireEffects() {
+    for (const effect of [...activeFireEffects]) removeFireEffect(effect);
+  }
+
+  function updateFireEffects(time) {
+    for (const effect of [...activeFireEffects]) {
+      const progress = THREE.MathUtils.clamp(
+        (time - effect.startTime) / EXPLOSION_FIRE_DURATION_MS,
+        0,
+        1,
+      );
+      const expansion = 1 - (1 - progress) ** 3;
+      effect.mesh.scale.setScalar(THREE.MathUtils.lerp(0.18, 2.55, expansion));
+      effect.mesh.rotation.y = progress * 1.8;
+      effect.mesh.rotation.z = progress * 0.7;
+      effect.material.uniforms.uProgress.value = progress;
+      effect.material.uniforms.uTime.value = time * 0.001;
+      effect.material.uniforms.uOpacity.value = 0.92 * (1 - progress) ** 1.15;
+      if (progress >= 1) removeFireEffect(effect);
+    }
   }
 
   function fitWaterToCamera() {
@@ -470,6 +565,7 @@ export function createGameView(container) {
   function animateWater(time) {
     waterAnimationFrame = 0;
     if (disposed || reducedMotion?.matches) return;
+    updateFireEffects(time);
     waterMaterial.uniforms.uTime.value = time * 0.001;
     const exitOffset = Math.sin(time * Math.PI * 2 / EXIT_LABEL_FLOAT_PERIOD_MS)
       * EXIT_LABEL_FLOAT_AMPLITUDE;
@@ -486,6 +582,7 @@ export function createGameView(container) {
     if (reducedMotion?.matches) {
       if (waterAnimationFrame) cancelAnimationFrame(waterAnimationFrame);
       waterAnimationFrame = 0;
+      clearFireEffects();
       waterMaterial.uniforms.uTime.value = 0;
       for (const record of fixtureRecords) {
         if (record.type === "exit") record.label.position.y = EXIT_LABEL_BASE_Y;
@@ -703,6 +800,23 @@ export function createGameView(container) {
     return effects;
   }
 
+  function createFireEffects(events) {
+    for (const event of events ?? []) {
+      if (event.type !== "barrelExploded") continue;
+      const material = createExplosionFireMaterial();
+      const mesh = new THREE.Mesh(geometries.explosionFire, material);
+      const horizontal = coordinateToWorld(event.coordinate, world);
+      mesh.position.set(
+        horizontal.x,
+        entityBottomY(event.bottomHalfSteps) + SCENE_UNITS.levelHeight / 2,
+        horizontal.z,
+      );
+      mesh.scale.setScalar(0.18);
+      effectRoot.add(mesh);
+      activeFireEffects.add({ mesh, material, startTime: performance.now() });
+    }
+  }
+
   async function animateTo(nextState, events = [], durationMs = TICK_DURATION_MS) {
     if (!currentState || durationMs <= 0 || disposed) {
       show(nextState);
@@ -726,6 +840,7 @@ export function createGameView(container) {
       }
     }
     const effects = createBlastEffects(events);
+    createFireEffects(events);
 
     await new Promise((resolve) => {
       let startTime;
@@ -780,6 +895,7 @@ export function createGameView(container) {
 
   function setWorld(fullState) {
     animationGeneration += 1;
+    clearFireEffects();
     world = fullState;
     currentState = null;
     terrainRoot.clear();
@@ -957,6 +1073,7 @@ export function createGameView(container) {
     window.removeEventListener("resize", handleResize);
     clearFixtures();
     clearEntities();
+    clearFireEffects();
     for (const effect of [...effectRoot.children]) {
       effect.material?.dispose();
       effectRoot.remove(effect);
