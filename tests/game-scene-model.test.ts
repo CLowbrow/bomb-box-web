@@ -11,6 +11,7 @@ import {
   terrainColumnSegments,
 } from "../site/game/scene-model.js";
 import {
+  BARREL_VISUAL_HEIGHT,
   BOX_VISUAL_HEIGHT,
   EXPLOSION_FIRE_DURATION_MS,
   addRoughTextureShader,
@@ -36,8 +37,10 @@ describe("three-dimensional game scene mapping", () => {
     expect(SCENE_UNITS.grid - SCENE_UNITS.floorSize).toBeCloseTo(0.05);
   });
 
-  it("leaves a legible vertical gap between stacked box visuals", () => {
+  it("leaves a legible vertical gap between stacked box and barrel visuals", () => {
     expect(SCENE_UNITS.levelHeight - BOX_VISUAL_HEIGHT).toBeCloseTo(0.06);
+    expect(SCENE_UNITS.levelHeight - BARREL_VISUAL_HEIGHT).toBeCloseTo(0.06);
+    expect(BARREL_VISUAL_HEIGHT).toBe(BOX_VISUAL_HEIGHT);
   });
 
   it("outlines the outer map perimeter without outlining shared flat edges", () => {

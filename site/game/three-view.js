@@ -24,6 +24,7 @@ const WATER_FRUSTUM_OVERSCAN = 0.8;
 const WATER_DEPTH_OFFSET = 0.36;
 const WATER_WAVE_HEIGHT = 0.055;
 export const BOX_VISUAL_HEIGHT = SCENE_UNITS.levelHeight - 0.06;
+export const BARREL_VISUAL_HEIGHT = BOX_VISUAL_HEIGHT;
 const ROUGH_TEXTURE_SCALE = 17;
 const ROUGH_TEXTURE_STRENGTH = 0.08;
 const TERRAIN_SHADE_PER_LEVEL = 0.08;
@@ -487,7 +488,7 @@ export function createGameView(container) {
     barrel: new THREE.CylinderGeometry(
       SCENE_UNITS.barrelDiameter / 2,
       SCENE_UNITS.barrelDiameter / 2,
-      SCENE_UNITS.levelHeight,
+      BARREL_VISUAL_HEIGHT,
       20,
     ),
     barrelBand: new THREE.TorusGeometry(SCENE_UNITS.barrelDiameter / 2 + 0.012, 0.035, 6, 24),
