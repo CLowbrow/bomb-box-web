@@ -25,6 +25,10 @@ const WATER_DEPTH_OFFSET = 0.36;
 const WATER_WAVE_HEIGHT = 0.055;
 export const BOX_VISUAL_HEIGHT = SCENE_UNITS.levelHeight - 0.06;
 export const BARREL_VISUAL_HEIGHT = BOX_VISUAL_HEIGHT;
+export const BARREL_VISUAL_TOP_Y = (SCENE_UNITS.levelHeight + BARREL_VISUAL_HEIGHT) / 2;
+export const BARREL_LIP_TUBE_RADIUS = 0.035;
+export const BARREL_LIP_CENTER_Y = BARREL_VISUAL_TOP_Y - BARREL_LIP_TUBE_RADIUS;
+export const BARREL_SLUDGE_SURFACE_Y = BARREL_LIP_CENTER_Y - 0.012;
 const ROUGH_TEXTURE_SCALE = 17;
 const ROUGH_TEXTURE_STRENGTH = 0.08;
 const TERRAIN_SHADE_PER_LEVEL = 0.08;
@@ -172,6 +176,80 @@ export function createExplosionFireMaterial() {
   });
 }
 
+export function createBarrelSludgeMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uOpacity: { value: 1 },
+      uDeepColor: { value: new THREE.Color(0x394236) },
+      uSludgeColor: { value: new THREE.Color(0x758064) },
+      uSheenColor: { value: new THREE.Color(0xbfc6a5) },
+    },
+    vertexShader: `
+      varying vec2 vSludgeUv;
+
+      void main() {
+        vSludgeUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uOpacity;
+      uniform vec3 uDeepColor;
+      uniform vec3 uSludgeColor;
+      uniform vec3 uSheenColor;
+      varying vec2 vSludgeUv;
+
+      float sludgeNoise(vec2 point) {
+        float broad = sin(point.x * 9.0 + sin(point.y * 5.0 - uTime * 1.15));
+        float cross = sin((point.x - point.y) * 13.0 + uTime * 0.82);
+        float curl = cos(length(point - vec2(0.5)) * 24.0 - uTime * 1.3);
+        return broad * 0.48 + cross * 0.3 + curl * 0.22;
+      }
+
+      float bubbleRing(vec2 center, float radius) {
+        float distanceFromRing = abs(length(vSludgeUv - center) - radius);
+        return 1.0 - smoothstep(0.008, 0.021, distanceFromRing);
+      }
+
+      void main() {
+        float radial = length(vSludgeUv - vec2(0.5)) * 2.0;
+        float flow = sludgeNoise(vSludgeUv + vec2(uTime * 0.055, -uTime * 0.038));
+        float surfaceCurrent = 0.5 + 0.5 * sin(
+          vSludgeUv.x * 10.0 - uTime * 1.35
+          + sin(vSludgeUv.y * 8.0 + uTime * 0.78)
+        );
+        float mixture = clamp(0.42 + flow * 0.23 + surfaceCurrent * 0.28, 0.0, 1.0);
+        vec3 color = mix(uDeepColor, uSludgeColor, mixture);
+
+        float oilySheen = pow(max(0.0, 0.5 + 0.5 * sin(
+          vSludgeUv.x * 18.0 + vSludgeUv.y * 11.0 + flow - uTime * 1.05
+        )), 4.0);
+        float bubblePulse = 0.5 + 0.5 * sin(uTime * 2.2);
+        vec2 bubbleOne = vec2(
+          0.34 + sin(uTime * 0.85) * 0.045,
+          0.57 + cos(uTime * 0.71) * 0.035
+        );
+        vec2 bubbleTwo = vec2(
+          0.67 + cos(uTime * 0.63) * 0.04,
+          0.4 + sin(uTime * 0.76) * 0.045
+        );
+        float bubbles = bubbleRing(bubbleOne, 0.045 + bubblePulse * 0.02)
+          + bubbleRing(bubbleTwo, 0.032 + (1.0 - bubblePulse) * 0.018);
+        float movingHighlight = oilySheen * 0.3 + bubbles * 0.48 + surfaceCurrent * 0.08;
+        color = mix(color, uSheenColor, clamp(movingHighlight, 0.0, 0.64));
+        color *= 1.0 - smoothstep(0.72, 1.0, radial) * 0.16;
+
+        gl_FragColor = vec4(color, uOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+  });
+}
+
 export function waterFootprintForCamera(camera, waterY) {
   camera.updateMatrixWorld(true);
   const waterPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -waterY);
@@ -234,6 +312,7 @@ function disposeRecord(record) {
 
 function setMaterialOpacity(material, opacity) {
   material.opacity = opacity;
+  if (material.uniforms?.uOpacity) material.uniforms.uOpacity.value = opacity;
   material.transparent = opacity < 1;
   material.depthWrite = opacity > 0.98;
 }
@@ -490,6 +569,19 @@ export function createGameView(container) {
       SCENE_UNITS.barrelDiameter / 2,
       BARREL_VISUAL_HEIGHT,
       20,
+      1,
+      true,
+    ),
+    barrelBottom: new THREE.CircleGeometry(SCENE_UNITS.barrelDiameter / 2, 24),
+    barrelLip: new THREE.TorusGeometry(
+      SCENE_UNITS.barrelDiameter / 2 - BARREL_LIP_TUBE_RADIUS,
+      BARREL_LIP_TUBE_RADIUS,
+      8,
+      32,
+    ),
+    barrelSludge: new THREE.CircleGeometry(
+      SCENE_UNITS.barrelDiameter / 2 - BARREL_LIP_TUBE_RADIUS * 1.9,
+      40,
     ),
     barrelBand: new THREE.TorusGeometry(SCENE_UNITS.barrelDiameter / 2 + 0.012, 0.035, 6, 24),
     playerBody: new THREE.ConeGeometry(0.31, 0.62, 16),
@@ -501,6 +593,9 @@ export function createGameView(container) {
     blast: new THREE.SphereGeometry(0.34, 14, 10),
     explosionFire: new THREE.SphereGeometry(0.34, 24, 18),
   };
+  geometries.barrelBottom.rotateX(Math.PI / 2);
+  geometries.barrelLip.rotateX(Math.PI / 2);
+  geometries.barrelSludge.rotateX(-Math.PI / 2);
   geometries.barrelBand.rotateX(Math.PI / 2);
   geometries.exit.rotateX(Math.PI / 2);
 
@@ -570,6 +665,9 @@ export function createGameView(container) {
     if (disposed || reducedMotion?.matches) return;
     updateFireEffects(time);
     waterMaterial.uniforms.uTime.value = time * 0.001;
+    for (const record of entityRecords.values()) {
+      if (record.sludgeMaterial) record.sludgeMaterial.uniforms.uTime.value = time * 0.001;
+    }
     const exitOffset = Math.sin(time * Math.PI * 2 / EXIT_LABEL_FLOAT_PERIOD_MS)
       * EXIT_LABEL_FLOAT_AMPLITUDE;
     for (const record of fixtureRecords) {
@@ -587,6 +685,9 @@ export function createGameView(container) {
       waterAnimationFrame = 0;
       clearFireEffects();
       waterMaterial.uniforms.uTime.value = 0;
+      for (const record of entityRecords.values()) {
+        if (record.sludgeMaterial) record.sludgeMaterial.uniforms.uTime.value = 0;
+      }
       for (const record of fixtureRecords) {
         if (record.type === "exit") record.label.position.y = EXIT_LABEL_BASE_Y;
       }
@@ -651,6 +752,7 @@ export function createGameView(container) {
     group.userData.entityType = entity.type;
     const materials = [];
     let bandMaterial = null;
+    let sludgeMaterial = null;
 
     if (entity.type === "box") {
       const material = addRoughTextureShader(
@@ -666,8 +768,19 @@ export function createGameView(container) {
       );
       const mesh = new THREE.Mesh(geometries.barrel, material);
       mesh.position.y = SCENE_UNITS.levelHeight / 2;
-      group.add(mesh);
+      const bottom = new THREE.Mesh(geometries.barrelBottom, material);
+      bottom.position.y = (SCENE_UNITS.levelHeight - BARREL_VISUAL_HEIGHT) / 2;
+      const lip = new THREE.Mesh(geometries.barrelLip, material);
+      lip.position.y = BARREL_LIP_CENTER_Y;
+
+      sludgeMaterial = createBarrelSludgeMaterial();
+      const sludge = new THREE.Mesh(geometries.barrelSludge, sludgeMaterial);
+      sludge.position.y = BARREL_SLUDGE_SURFACE_Y;
+      sludge.renderOrder = 1;
+
+      group.add(mesh, bottom, lip, sludge);
       materials.push(material);
+      materials.push(sludgeMaterial);
 
       bandMaterial = new THREE.MeshStandardMaterial({
         color: 0xffc247,
@@ -691,7 +804,7 @@ export function createGameView(container) {
     }
 
     entityRoot.add(group);
-    const record = { entity, group, materials, bandMaterial };
+    const record = { entity, group, materials, bandMaterial, sludgeMaterial };
     entityRecords.set(entity.id, record);
     return record;
   }

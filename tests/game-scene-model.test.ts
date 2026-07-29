@@ -11,10 +11,15 @@ import {
   terrainColumnSegments,
 } from "../site/game/scene-model.js";
 import {
+  BARREL_LIP_CENTER_Y,
+  BARREL_LIP_TUBE_RADIUS,
+  BARREL_SLUDGE_SURFACE_Y,
   BARREL_VISUAL_HEIGHT,
+  BARREL_VISUAL_TOP_Y,
   BOX_VISUAL_HEIGHT,
   EXPLOSION_FIRE_DURATION_MS,
   addRoughTextureShader,
+  createBarrelSludgeMaterial,
   createExplosionFireMaterial,
   createExitLabel,
   createLedgeGeometry,
@@ -41,6 +46,11 @@ describe("three-dimensional game scene mapping", () => {
     expect(SCENE_UNITS.levelHeight - BOX_VISUAL_HEIGHT).toBeCloseTo(0.06);
     expect(SCENE_UNITS.levelHeight - BARREL_VISUAL_HEIGHT).toBeCloseTo(0.06);
     expect(BARREL_VISUAL_HEIGHT).toBe(BOX_VISUAL_HEIGHT);
+  });
+
+  it("keeps the barrel lip inside the original height and recesses its sludge surface", () => {
+    expect(BARREL_LIP_CENTER_Y + BARREL_LIP_TUBE_RADIUS).toBeCloseTo(BARREL_VISUAL_TOP_Y);
+    expect(BARREL_SLUDGE_SURFACE_Y).toBeLessThan(BARREL_LIP_CENTER_Y);
   });
 
   it("outlines the outer map perimeter without outlining shared flat edges", () => {
@@ -141,6 +151,22 @@ describe("three-dimensional game scene mapping", () => {
     expect(material.transparent).toBe(true);
     expect(material.depthWrite).toBe(false);
     expect(material.blending).toBe(THREE.AdditiveBlending);
+
+    material.dispose();
+  });
+
+  it("uses a time-driven glossy sludge shader for the barrel inset", () => {
+    const material = createBarrelSludgeMaterial();
+
+    expect(material.uniforms.uTime.value).toBe(0);
+    expect(material.uniforms.uOpacity.value).toBe(1);
+    expect(material.fragmentShader).toContain("sludgeNoise");
+    expect(material.fragmentShader).toContain("bubbleRing");
+    expect(material.fragmentShader).toContain("surfaceCurrent");
+    expect(material.fragmentShader).toContain("bubblePulse");
+    expect(material.fragmentShader).toContain("oilySheen");
+    expect(material.transparent).toBe(true);
+    expect(material.depthWrite).toBe(true);
 
     material.dispose();
   });
