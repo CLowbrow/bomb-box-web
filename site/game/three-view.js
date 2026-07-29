@@ -181,9 +181,9 @@ export function createBarrelSludgeMaterial() {
     uniforms: {
       uTime: { value: 0 },
       uOpacity: { value: 1 },
-      uDeepColor: { value: new THREE.Color(0x394236) },
-      uSludgeColor: { value: new THREE.Color(0x758064) },
-      uSheenColor: { value: new THREE.Color(0xbfc6a5) },
+      uDeepColor: { value: new THREE.Color(0x92828a) },
+      uSludgeColor: { value: new THREE.Color(0xaa929d) },
+      uSheenColor: { value: new THREE.Color(0xc1adb5) },
     },
     vertexShader: `
       varying vec2 vSludgeUv;
@@ -220,7 +220,7 @@ export function createBarrelSludgeMaterial() {
           vSludgeUv.x * 10.0 - uTime * 1.35
           + sin(vSludgeUv.y * 8.0 + uTime * 0.78)
         );
-        float mixture = clamp(0.42 + flow * 0.23 + surfaceCurrent * 0.28, 0.0, 1.0);
+        float mixture = clamp(0.52 + flow * 0.1 + surfaceCurrent * 0.14, 0.0, 1.0);
         vec3 color = mix(uDeepColor, uSludgeColor, mixture);
 
         float oilySheen = pow(max(0.0, 0.5 + 0.5 * sin(
@@ -237,9 +237,9 @@ export function createBarrelSludgeMaterial() {
         );
         float bubbles = bubbleRing(bubbleOne, 0.045 + bubblePulse * 0.02)
           + bubbleRing(bubbleTwo, 0.032 + (1.0 - bubblePulse) * 0.018);
-        float movingHighlight = oilySheen * 0.3 + bubbles * 0.48 + surfaceCurrent * 0.08;
-        color = mix(color, uSheenColor, clamp(movingHighlight, 0.0, 0.64));
-        color *= 1.0 - smoothstep(0.72, 1.0, radial) * 0.16;
+        float movingHighlight = oilySheen * 0.14 + bubbles * 0.24 + surfaceCurrent * 0.04;
+        color = mix(color, uSheenColor, clamp(movingHighlight, 0.0, 0.34));
+        color *= 1.0 - smoothstep(0.72, 1.0, radial) * 0.06;
 
         gl_FragColor = vec4(color, uOpacity);
       }
