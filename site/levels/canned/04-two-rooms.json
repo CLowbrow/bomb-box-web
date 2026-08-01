@@ -34,7 +34,7 @@
         "y": 0
       },
       "type": "flat",
-      "elevation": 1
+      "elevation": 0
     },
     {
       "coordinate": {
@@ -457,6 +457,14 @@
   "fixtures": [
     {
       "coordinate": {
+        "x": 7,
+        "y": 0
+      },
+      "type": "switch",
+      "color": "blue"
+    },
+    {
+      "coordinate": {
         "x": 10,
         "y": 0
       },
@@ -530,6 +538,15 @@
         "y": 2
       },
       "bottomHalfSteps": 0
+    },
+    {
+      "id": "4",
+      "type": "box",
+      "coordinate": {
+        "x": 9,
+        "y": 2
+      },
+      "bottomHalfSteps": 2
     }
   ]
 }
