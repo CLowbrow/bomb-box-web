@@ -22,6 +22,13 @@ test("static build contains the browser host and WebAssembly artifacts", async (
   }
 });
 
+test("static build contains the player character model", async () => {
+  const names = await readdir(new URL("assets/", outputRoot));
+  const model = names.find((entry) => entry.startsWith("Gorker-") && entry.endsWith(".glb"));
+  assert.ok(model, "expected the bundled Gorker player model");
+  assert.ok((await stat(new URL(`assets/${model}`, outputRoot))).size > 0);
+});
+
 test("site uses repository-path-safe relative asset URLs", async () => {
   const html = await readFile(new URL("index.html", outputRoot), "utf8");
   const editorHtml = await readFile(

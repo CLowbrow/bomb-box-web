@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { TICK_DURATION_MS } from "./config.js";
 import {
   SCENE_UNITS,
@@ -19,6 +20,7 @@ import {
 const CAMERA_ELEVATION = THREE.MathUtils.degToRad(64);
 const CAMERA_FRAMING_FOV = 34;
 const CAMERA_FOCAL_LENGTH = 60;
+const PLAYER_MODEL_URL = new URL("../models/Gorker.glb", import.meta.url).href;
 const WATER_MARGIN = 2.4;
 const WATER_FRUSTUM_OVERSCAN = 0.8;
 const WATER_DEPTH_OFFSET = 0.36;
@@ -58,6 +60,36 @@ const FIXTURE_COLORS = Object.freeze({
   blue: 0x477fc2,
   yellow: 0xd6a928,
 });
+
+export function fitPlayerModel(model, targetHeight = SCENE_UNITS.playerHeight) {
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model);
+  const size = bounds.getSize(new THREE.Vector3());
+  if (bounds.isEmpty() || size.y <= 0) {
+    throw new Error("player model has no measurable height");
+  }
+
+  const center = bounds.getCenter(new THREE.Vector3());
+  const offset = new THREE.Group();
+  offset.position.set(-center.x, -bounds.min.y, -center.z);
+  offset.add(model);
+
+  const fitted = new THREE.Group();
+  fitted.name = "GorkerPlayerModel";
+  fitted.scale.setScalar(targetHeight / size.y);
+  fitted.add(offset);
+  return fitted;
+}
+
+export function playerFacingAngle(fromTransform, toTransform) {
+  const dx = toTransform.x - fromTransform.x;
+  const dz = toTransform.z - fromTransform.z;
+  if (Math.abs(dx) + Math.abs(dz) < Number.EPSILON) return null;
+
+  // Gorker's face is authored toward local +X. Three.js positive Y rotation
+  // turns local +X toward negative Z.
+  return Math.atan2(-dz, dx);
+}
 
 export function createWaterMaterial() {
   return new THREE.ShaderMaterial({
@@ -308,6 +340,45 @@ export function createRampGeometry(lowDirection) {
 
 function disposeRecord(record) {
   for (const material of record.materials) material.dispose();
+}
+
+function disposePlayerModelTemplate(template) {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  template?.traverse((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const objectMaterials = Array.isArray(object.material)
+      ? object.material
+      : object.material
+        ? [object.material]
+        : [];
+    for (const material of objectMaterials) {
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) textures.add(value);
+      }
+    }
+  });
+  for (const geometry of geometries) geometry.dispose();
+  for (const material of materials) material.dispose();
+  for (const texture of textures) texture.dispose();
+}
+
+function clonePlayerModel(template) {
+  const model = template.clone(true);
+  const materialClones = new Map();
+  model.traverse((object) => {
+    if (!object.isMesh) return;
+    const cloneMaterial = (material) => {
+      if (!materialClones.has(material)) materialClones.set(material, material.clone());
+      return materialClones.get(material);
+    };
+    object.material = Array.isArray(object.material)
+      ? object.material.map(cloneMaterial)
+      : cloneMaterial(object.material);
+  });
+  return { model, materials: [...materialClones.values()] };
 }
 
 function setMaterialOpacity(material, opacity) {
@@ -610,9 +681,23 @@ export function createGameView(container) {
   let maxWorldY = SCENE_UNITS.levelHeight;
   let waterAnimationFrame = 0;
   let ledgeGeometry = null;
+  let playerModelTemplate = null;
   const activeFireEffects = new Set();
 
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+
+  new GLTFLoader().loadAsync(PLAYER_MODEL_URL).then(({ scene: playerScene }) => {
+    const template = fitPlayerModel(playerScene);
+    if (disposed) {
+      disposePlayerModelTemplate(template);
+      return;
+    }
+    playerModelTemplate = template;
+    for (const record of entityRecords.values()) installPlayerModel(record);
+    render();
+  }).catch((error) => {
+    if (!disposed) console.warn("[Bomb Box] Could not load the player model.", error);
+  });
 
   function render() {
     if (!disposed) renderer.render(scene, camera);
@@ -746,6 +831,17 @@ export function createGameView(container) {
     fixtureRoot.clear();
   }
 
+  function installPlayerModel(record) {
+    if (record.entity.type !== "player" || !playerModelTemplate || record.hasPlayerModel) return;
+    const { model, materials } = clonePlayerModel(playerModelTemplate);
+    for (const child of [...record.group.children]) record.group.remove(child);
+    for (const material of record.materials) material.dispose();
+    record.materials = materials;
+    record.hasPlayerModel = true;
+    record.group.add(model);
+    for (const material of materials) setMaterialOpacity(material, record.opacity);
+  }
+
   function createEntityRecord(entity) {
     const group = new THREE.Group();
     group.userData.entityId = entity.id;
@@ -804,12 +900,22 @@ export function createGameView(container) {
     }
 
     entityRoot.add(group);
-    const record = { entity, group, materials, bandMaterial, sludgeMaterial };
+    const record = {
+      entity,
+      group,
+      materials,
+      bandMaterial,
+      sludgeMaterial,
+      hasPlayerModel: false,
+      opacity: 1,
+    };
     entityRecords.set(entity.id, record);
+    installPlayerModel(record);
     return record;
   }
 
   function setEntityVisual(record, opacity, armedStrength) {
+    record.opacity = opacity;
     for (const material of record.materials) {
       if (material === record.bandMaterial) continue;
       setMaterialOpacity(material, opacity);
@@ -955,8 +1061,19 @@ export function createGameView(container) {
         setEntityVisual(record, 0, armedAfter.has(id) ? 1 : 0);
       }
     }
+    for (const [id, toEntity] of after) {
+      const fromEntity = before.get(id);
+      const record = entityRecords.get(id);
+      if (!fromEntity || toEntity.type !== "player" || !record) continue;
+      const angle = playerFacingAngle(
+        entityTransform(fromEntity, world),
+        entityTransform(toEntity, world),
+      );
+      if (angle !== null) record.group.rotation.y = angle;
+    }
     const effects = createBlastEffects(events);
     createFireEffects(events);
+    render();
 
     await new Promise((resolve) => {
       let startTime;
@@ -1190,6 +1307,8 @@ export function createGameView(container) {
     clearFixtures();
     clearEntities();
     clearFireEffects();
+    disposePlayerModelTemplate(playerModelTemplate);
+    playerModelTemplate = null;
     for (const effect of [...effectRoot.children]) {
       effect.material?.dispose();
       effectRoot.remove(effect);

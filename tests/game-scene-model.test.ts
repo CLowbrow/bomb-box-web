@@ -25,6 +25,8 @@ import {
   createLedgeGeometry,
   createRampGeometry,
   createWaterMaterial,
+  fitPlayerModel,
+  playerFacingAngle,
   waterFootprintForCamera,
 } from "../site/game/three-view.js";
 import { TICK_DURATION_MS } from "../site/game/config.js";
@@ -38,6 +40,32 @@ function world(positiveX = "east", positiveY = "north") {
 }
 
 describe("three-dimensional game scene mapping", () => {
+  it("fits the player model to the gameplay height and grounds it at the origin", () => {
+    const source = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 3));
+    source.position.set(5, 3, -2);
+    const model = fitPlayerModel(source);
+    const bounds = new THREE.Box3().setFromObject(model);
+    const size = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
+
+    expect(size.y).toBeCloseTo(SCENE_UNITS.playerHeight);
+    expect(bounds.min.y).toBeCloseTo(0);
+    expect(center.x).toBeCloseTo(0);
+    expect(center.z).toBeCloseTo(0);
+
+    source.geometry.dispose();
+    source.material.dispose();
+  });
+
+  it("maps player travel to snapped model headings", () => {
+    const origin = { x: 0, z: 0 };
+    expect(playerFacingAngle(origin, { x: 1, z: 0 })).toBeCloseTo(0);
+    expect(playerFacingAngle(origin, { x: 0, z: -1 })).toBeCloseTo(Math.PI / 2);
+    expect(Math.abs(playerFacingAngle(origin, { x: -1, z: 0 })!)).toBeCloseTo(Math.PI);
+    expect(playerFacingAngle(origin, { x: 0, z: 1 })).toBeCloseTo(-Math.PI / 2);
+    expect(playerFacingAngle(origin, { x: 0, z: 0 })).toBeNull();
+  });
+
   it("uses narrow horizontal seams between floor blocks", () => {
     expect(SCENE_UNITS.grid - SCENE_UNITS.floorSize).toBeCloseTo(0.05);
   });
