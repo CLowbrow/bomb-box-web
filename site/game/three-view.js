@@ -25,6 +25,8 @@ const WATER_MARGIN = 2.4;
 const WATER_FRUSTUM_OVERSCAN = 0.8;
 const WATER_DEPTH_OFFSET = 0.36;
 const WATER_WAVE_HEIGHT = 0.055;
+const SHADOW_MAP_SIZE = 1024;
+const SHADOW_FRUSTUM_MARGIN = 1.5;
 export const BOX_VISUAL_HEIGHT = SCENE_UNITS.levelHeight - 0.06;
 export const BARREL_VISUAL_HEIGHT = BOX_VISUAL_HEIGHT;
 export const BARREL_VISUAL_TOP_Y = (SCENE_UNITS.levelHeight + BARREL_VISUAL_HEIGHT) / 2;
@@ -388,6 +390,16 @@ function setMaterialOpacity(material, opacity) {
   material.depthWrite = opacity > 0.98;
 }
 
+function enableMeshShadows(root) {
+  root.traverse((object) => {
+    if (!object.isMesh) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.some((material) => material?.isShaderMaterial)) return;
+    object.castShadow = true;
+    object.receiveShadow = true;
+  });
+}
+
 function stateSet(values, key = (value) => value) {
   return new Set((values ?? []).map(key));
 }
@@ -598,6 +610,8 @@ export function createGameView(container) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.08;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.domElement.setAttribute("aria-hidden", "true");
   container.replaceChildren(renderer.domElement);
@@ -615,10 +629,14 @@ export function createGameView(container) {
   water.rotation.x = -Math.PI / 2;
   water.visible = false;
   scene.add(water, terrainRoot, fixtureRoot, entityRoot, effectRoot);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x777164, 2.1));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 3.1);
-  keyLight.position.set(-6, 12, 8);
-  scene.add(keyLight);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x777164, 1.35));
+  const keyLight = new THREE.DirectionalLight(0xfff1d6, 4.2);
+  keyLight.position.set(-8, 14, 10);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+  keyLight.shadow.bias = -0.0004;
+  keyLight.shadow.normalBias = 0.025;
+  scene.add(keyLight, keyLight.target);
 
   const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x8f9290, roughness: 0.88 });
   const ledgeMaterial = new LineMaterial({
@@ -806,6 +824,19 @@ export function createGameView(container) {
     camera.updateProjectionMatrix();
 
     const targetY = (minWorldY + maxWorldY) / 2;
+    const shadowSpan = Math.hypot(horizontalSpan, depthSpan)
+      + elevationSpan
+      + SHADOW_FRUSTUM_MARGIN * 2;
+    const shadowCamera = keyLight.shadow.camera;
+    keyLight.position.set(-8, targetY + 14, 10);
+    keyLight.target.position.set(0, targetY, 0);
+    shadowCamera.left = -shadowSpan / 2;
+    shadowCamera.right = shadowSpan / 2;
+    shadowCamera.top = shadowSpan / 2;
+    shadowCamera.bottom = -shadowSpan / 2;
+    shadowCamera.near = 0.1;
+    shadowCamera.far = 30 + shadowSpan;
+    shadowCamera.updateProjectionMatrix();
     camera.position.set(
       0,
       targetY + distance * Math.sin(CAMERA_ELEVATION),
@@ -838,6 +869,7 @@ export function createGameView(container) {
     for (const material of record.materials) material.dispose();
     record.materials = materials;
     record.hasPlayerModel = true;
+    enableMeshShadows(model);
     record.group.add(model);
     for (const material of materials) setMaterialOpacity(material, record.opacity);
   }
@@ -899,6 +931,7 @@ export function createGameView(container) {
       materials.push(material);
     }
 
+    enableMeshShadows(group);
     entityRoot.add(group);
     const record = {
       entity,
@@ -1186,6 +1219,8 @@ export function createGameView(container) {
       });
       blocks.instanceMatrix.needsUpdate = true;
       blocks.instanceColor.needsUpdate = true;
+      blocks.castShadow = true;
+      blocks.receiveShadow = true;
       terrainRoot.add(blocks);
     }
 
@@ -1205,6 +1240,8 @@ export function createGameView(container) {
       });
       ramps.instanceMatrix.needsUpdate = true;
       ramps.instanceColor.needsUpdate = true;
+      ramps.castShadow = true;
+      ramps.receiveShadow = true;
       terrainRoot.add(ramps);
     }
 
@@ -1279,6 +1316,7 @@ export function createGameView(container) {
           floorY + EXIT_LABEL_BASE_Y + EXIT_LABEL_HEIGHT / 2 + EXIT_LABEL_FLOAT_AMPLITUDE,
         );
       }
+      enableMeshShadows(group);
     }
 
     minWorldY = Math.min(Number.isFinite(terrainMin) ? terrainMin : 0, waterY - WATER_WAVE_HEIGHT);
