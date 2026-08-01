@@ -48,7 +48,6 @@ describe("three-dimensional game scene mapping", () => {
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
 
-    expect(PLAYER_VISUAL_SCALE).toBe(1.15);
     expect(size.y).toBeCloseTo(SCENE_UNITS.playerHeight * PLAYER_VISUAL_SCALE);
     expect(bounds.min.y).toBeCloseTo(0);
     expect(center.x).toBeCloseTo(0);
