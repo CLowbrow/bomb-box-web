@@ -275,7 +275,7 @@
         "y": 3
       },
       "type": "flat",
-      "elevation": 1
+      "elevation": 0
     },
     {
       "coordinate": {
@@ -283,7 +283,7 @@
         "y": 3
       },
       "type": "flat",
-      "elevation": 1
+      "elevation": 0
     },
     {
       "coordinate": {
@@ -291,7 +291,7 @@
         "y": 3
       },
       "type": "flat",
-      "elevation": 1
+      "elevation": 0
     },
     {
       "coordinate": {
@@ -680,7 +680,7 @@
     },
     {
       "id": "6",
-      "type": "barrel",
+      "type": "box",
       "coordinate": {
         "x": 8,
         "y": 1
@@ -689,7 +689,7 @@
     },
     {
       "id": "7",
-      "type": "barrel",
+      "type": "box",
       "coordinate": {
         "x": 9,
         "y": 1
@@ -758,6 +758,33 @@
         "y": 3
       },
       "bottomHalfSteps": 4
+    },
+    {
+      "id": "11",
+      "type": "box",
+      "coordinate": {
+        "x": 2,
+        "y": 3
+      },
+      "bottomHalfSteps": 0
+    },
+    {
+      "id": "12",
+      "type": "box",
+      "coordinate": {
+        "x": 3,
+        "y": 3
+      },
+      "bottomHalfSteps": 0
+    },
+    {
+      "id": "14",
+      "type": "box",
+      "coordinate": {
+        "x": 4,
+        "y": 3
+      },
+      "bottomHalfSteps": 0
     },
     {
       "id": "10",
