@@ -29,7 +29,7 @@ import {
   playerFacingAngle,
   waterFootprintForCamera,
 } from "../site/game/three-view.js";
-import { TICK_DURATION_MS } from "../site/game/config.js";
+import { PLAYER_VISUAL_SCALE, TICK_DURATION_MS } from "../site/game/config.js";
 
 function world(positiveX = "east", positiveY = "north") {
   return {
@@ -48,13 +48,40 @@ describe("three-dimensional game scene mapping", () => {
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
 
-    expect(size.y).toBeCloseTo(SCENE_UNITS.playerHeight);
+    expect(PLAYER_VISUAL_SCALE).toBe(1.15);
+    expect(size.y).toBeCloseTo(SCENE_UNITS.playerHeight * PLAYER_VISUAL_SCALE);
     expect(bounds.min.y).toBeCloseTo(0);
     expect(center.x).toBeCloseTo(0);
     expect(center.z).toBeCloseTo(0);
 
     source.geometry.dispose();
     source.material.dispose();
+  });
+
+  it("centers the player body instead of clipboard-inclusive model bounds at every scale", () => {
+    for (const targetHeight of [0.9, 1.35]) {
+      const source = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 2));
+      body.name = "Sphere";
+      body.position.set(1, 3, -1);
+      const clipboard = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 3));
+      clipboard.position.set(1, 3, 2);
+      source.add(body, clipboard);
+
+      const model = fitPlayerModel(source, targetHeight);
+      const modelBounds = new THREE.Box3().setFromObject(model);
+      const bodyCenter = new THREE.Box3().setFromObject(body).getCenter(new THREE.Vector3());
+
+      expect(modelBounds.getSize(new THREE.Vector3()).y).toBeCloseTo(targetHeight);
+      expect(modelBounds.min.y).toBeCloseTo(0);
+      expect(bodyCenter.x).toBeCloseTo(0);
+      expect(bodyCenter.z).toBeCloseTo(0);
+
+      body.geometry.dispose();
+      body.material.dispose();
+      clipboard.geometry.dispose();
+      clipboard.material.dispose();
+    }
   });
 
   it("maps player travel to snapped model headings", () => {

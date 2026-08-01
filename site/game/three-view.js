@@ -3,7 +3,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { TICK_DURATION_MS } from "./config.js";
+import { PLAYER_VISUAL_SCALE, TICK_DURATION_MS } from "./config.js";
 import {
   SCENE_UNITS,
   cellSurfaceRange,
@@ -21,6 +21,7 @@ const CAMERA_ELEVATION = THREE.MathUtils.degToRad(64);
 const CAMERA_FRAMING_FOV = 34;
 const CAMERA_FOCAL_LENGTH = 60;
 const PLAYER_MODEL_URL = new URL("../models/Gorker.glb", import.meta.url).href;
+const PLAYER_MODEL_ALIGNMENT_NODE_NAME = "Sphere";
 const WATER_MARGIN = 2.4;
 const WATER_FRUSTUM_OVERSCAN = 0.8;
 const WATER_DEPTH_OFFSET = 0.36;
@@ -63,7 +64,10 @@ const FIXTURE_COLORS = Object.freeze({
   yellow: 0xd6a928,
 });
 
-export function fitPlayerModel(model, targetHeight = SCENE_UNITS.playerHeight) {
+export function fitPlayerModel(
+  model,
+  targetHeight = SCENE_UNITS.playerHeight * PLAYER_VISUAL_SCALE,
+) {
   model.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(model);
   const size = bounds.getSize(new THREE.Vector3());
@@ -71,9 +75,16 @@ export function fitPlayerModel(model, targetHeight = SCENE_UNITS.playerHeight) {
     throw new Error("player model has no measurable height");
   }
 
-  const center = bounds.getCenter(new THREE.Vector3());
+  // The clipboard extends away from Gorker's body, so centering the complete
+  // model makes the character appear off-center. Align to the body instead;
+  // keeping this offset inside the scaled group preserves it at every size.
+  const alignmentNode = model.getObjectByName(PLAYER_MODEL_ALIGNMENT_NODE_NAME);
+  const alignmentBounds = alignmentNode
+    ? new THREE.Box3().setFromObject(alignmentNode)
+    : bounds;
+  const alignmentCenter = alignmentBounds.getCenter(new THREE.Vector3());
   const offset = new THREE.Group();
-  offset.position.set(-center.x, -bounds.min.y, -center.z);
+  offset.position.set(-alignmentCenter.x, -bounds.min.y, -alignmentCenter.z);
   offset.add(model);
 
   const fitted = new THREE.Group();
