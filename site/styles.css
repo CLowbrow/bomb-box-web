@@ -322,6 +322,10 @@ a {
   cursor: pointer;
 }
 
+.dpad button {
+  touch-action: manipulation;
+}
+
 .dpad button:hover,
 .secondary-control:hover {
   border-color: #8f8b82;
