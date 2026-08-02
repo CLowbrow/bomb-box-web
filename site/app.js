@@ -6,6 +6,7 @@ import {
 } from "./level-source.js";
 import { createLatestMoveRunner, performCommand } from "./game/command-runner.js";
 import { TICK_DURATION_MS } from "./game/config.js";
+import { createFullscreenController } from "./game/fullscreen.js";
 import { coordinateKey } from "./game/scene-model.js";
 import { playEngineResult } from "./game/tick-playback.js";
 import { createGameView } from "./game/three-view.js";
@@ -16,6 +17,7 @@ const outcomeElement = document.querySelector("#outcome");
 const turnCountElement = document.querySelector("#turn-count");
 const rewindButton = document.querySelector("#rewind");
 const restartButton = document.querySelector("#restart");
+const fullscreenButton = document.querySelector("#fullscreen");
 const levelNameElement = document.querySelector("#level-name");
 const levelListElement = document.querySelector("#level-list");
 const howToPlayElement = document.querySelector("#how-to-play");
@@ -36,6 +38,7 @@ let outcome = "ongoing";
 let turnCount = 0;
 let entityTypes = new Map();
 let moveRunner;
+const fullscreenController = createFullscreenController(boardElement, fullscreenButton);
 
 function setStatus(state, message) {
   statusElement.dataset.state = state;
@@ -247,6 +250,7 @@ for (const button of directionButtons) {
 }
 rewindButton.addEventListener("click", () => void runCommand(() => engine.rewind()));
 restartButton.addEventListener("click", () => void runCommand(() => loadLevel()));
+fullscreenButton.addEventListener("click", () => void fullscreenController.toggle());
 
 const keyDirections = {
   ArrowUp: "north",
@@ -314,6 +318,7 @@ try {
 
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
+    fullscreenController.dispose();
     gameView?.dispose();
     engine?.destroy();
   }

@@ -108,6 +108,7 @@ test("minimal game surface includes recovery, JSON-backed levels, and console tu
 
   assert.match(html, /id="rewind"/);
   assert.match(html, /id="restart"/);
+  assert.match(html, /id="fullscreen"[^>]*aria-pressed="false"/);
   assert.match(html, /Backspace \/ Z to rewind<br>R to restart/);
   assert.match(html, /id="level-list"/);
   assert.match(
@@ -124,6 +125,9 @@ test("minimal game surface includes recovery, JSON-backed levels, and console tu
   assert.doesNotMatch(html, /Show test route/);
   assert.match(app, /engine\.rewind\(\)/);
   assert.match(app, /engine\.loadLevel\(nextLevel\)/);
+  assert.match(app, /createFullscreenController\(boardElement, fullscreenButton\)/);
+  assert.match(app, /requestFullscreen/);
+  assert.match(app, /fullscreenchange/);
   assert.match(app, /event\.key\.toLowerCase\(\) === "r"/);
   assert.match(app, /result\.ticks\.flatMap/);
   assert.match(app, /console\.groupCollapsed/);
