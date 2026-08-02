@@ -128,6 +128,8 @@ test("minimal game surface includes recovery, JSON-backed levels, and console tu
   assert.match(app, /createFullscreenController\(boardElement, fullscreenButton\)/);
   assert.match(app, /requestFullscreen/);
   assert.match(app, /fullscreenchange/);
+  assert.match(app, /createLevelAdvanceController/);
+  assert.match(app, /advance: \(nextLevel\) => void switchToCannedLevel\(nextLevel\)/);
   assert.match(app, /event\.key\.toLowerCase\(\) === "r"/);
   assert.match(app, /result\.ticks\.flatMap/);
   assert.match(app, /console\.groupCollapsed/);

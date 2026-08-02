@@ -7,6 +7,7 @@ import {
 import { createLatestMoveRunner, performCommand } from "./game/command-runner.js";
 import { TICK_DURATION_MS } from "./game/config.js";
 import { createFullscreenController } from "./game/fullscreen.js";
+import { createLevelAdvanceController } from "./game/level-advance.js";
 import { coordinateKey } from "./game/scene-model.js";
 import { playEngineResult } from "./game/tick-playback.js";
 import { createGameView } from "./game/three-view.js";
@@ -39,6 +40,11 @@ let turnCount = 0;
 let entityTypes = new Map();
 let moveRunner;
 const fullscreenController = createFullscreenController(boardElement, fullscreenButton);
+const levelAdvanceController = createLevelAdvanceController({
+  levels: cannedLevels,
+  getCurrentLevelId: () => currentLevelId,
+  advance: (nextLevel) => void switchToCannedLevel(nextLevel),
+});
 
 function setStatus(state, message) {
   statusElement.dataset.state = state;
@@ -59,6 +65,7 @@ function updateControls() {
 
 function updateStatePresentation(state) {
   outcome = state.outcome;
+  levelAdvanceController.update(outcome);
   outcomeElement.textContent = outcome === "won"
     ? "Level complete!"
     : outcome === "lost"
@@ -318,6 +325,7 @@ try {
 
 window.addEventListener("pagehide", (event) => {
   if (!event.persisted) {
+    levelAdvanceController.cancel();
     fullscreenController.dispose();
     gameView?.dispose();
     engine?.destroy();
